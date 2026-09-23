@@ -1,60 +1,96 @@
+"""Protótipo de demonstração. Requer os CSVs em data/ e data/simulados/.
+Execute na raiz do projeto: python -m streamlit run app/src/streamlit_app.py
+Correções: contêiner visual, localização/validação dos dados, filtros seguros
+ e exibição do percurso selecionado. Não implementa autenticação real.
+"""
 from pathlib import Path
+from html import escape
+import unicodedata
 
 import pandas as pd
 import streamlit as st
 
-ROOT = Path(__file__).resolve().parents[2]
+def find_project_root():
+    """Localiza data/ junto ao app ou em um dos diretórios superiores."""
+    for start in (Path(__file__).resolve().parent, Path.cwd().resolve()):
+        for candidate in (start, *start.parents):
+            if (candidate / "data" / "simulados").is_dir():
+                return candidate
+    return Path(__file__).resolve().parent
+
+
+ROOT = find_project_root()
 DATA_DIR = ROOT / "data"
-SIM_DIR = DATA_DIR / "simulados"
+
+
+def read_csv_checked(path, required_columns):
+    if not path.is_file():
+        raise FileNotFoundError(f"Arquivo necessário não encontrado: {path}")
+    frame = pd.read_csv(path, sep=";", dtype=str, keep_default_na=False, encoding="utf-8-sig")
+    frame.columns = frame.columns.str.strip()
+    missing = set(required_columns) - set(frame.columns)
+    if missing:
+        raise ValueError(f"{path.name}: faltam as colunas {', '.join(sorted(missing))}. "
+                         "Confira também o separador ponto e vírgula (;).")
+    return frame
 
 
 @st.cache_data
-def load_data():
-    users = pd.read_csv(SIM_DIR / "dim_usuario.csv", sep=";")
-    rotinas = pd.read_csv(SIM_DIR / "dim_rotina.csv", sep=";")
-    viagens = pd.read_csv(SIM_DIR / "fato_viagem_planejada.csv", sep=";")
-    ocorrencias = pd.read_csv(SIM_DIR / "dim_ocorrencia.csv", sep=";")
-    estacoes_dim = pd.read_csv(SIM_DIR / "dim_estacao.csv", sep=";")
-    estacoes_real = pd.read_csv(DATA_DIR / "estacoes_linha7.csv", sep=";")
+def load_data(data_dir):
+    data_dir = Path(data_dir)
+    sim_dir = data_dir / "simulados"
+    users = read_csv_checked(sim_dir / "dim_usuario.csv", ["usuario_id", "nome", "dados_sinteticos"])
+    rotinas = read_csv_checked(sim_dir / "dim_rotina.csv", ["rotina_id"])
+    viagens = read_csv_checked(sim_dir / "fato_viagem_planejada.csv", ["usuario_id", "rotina_id"])
+    ocorrencias = read_csv_checked(sim_dir / "dim_ocorrencia.csv",
+        ["hora", "status_operacao", "movimento", "impacto_usuarios", "dados_sinteticos"])
+    estacoes_dim = read_csv_checked(sim_dir / "dim_estacao.csv", ["estacao_id", "nome_estacao"])
+    estacoes_real = read_csv_checked(data_dir / "estacoes_linha7.csv", ["estacao"])
 
-    for frame in [users, rotinas, viagens, ocorrencias, estacoes_dim, estacoes_real]:
-        frame.fillna("", inplace=True)
-
+    # Não usar astype(bool): a string "False" também é verdadeira em Python.
+    for frame in (users, ocorrencias):
+        frame["dados_sinteticos"] = frame["dados_sinteticos"].str.strip().str.casefold().isin(
+            ["true", "1", "sim"]
+        )
+    ocorrencias = ocorrencias.loc[ocorrencias["dados_sinteticos"]].copy()
+    ocorrencias["hora"] = pd.to_numeric(ocorrencias["hora"], errors="coerce")
+    valid_hours = ocorrencias["hora"].between(0, 23) & (ocorrencias["hora"] % 1 == 0)
+    if not valid_hours.all():
+        raise ValueError("dim_ocorrencia.csv: hora deve ser um inteiro de 0 a 23.")
+    ocorrencias["hora"] = ocorrencias["hora"].astype(int)
     return users, rotinas, viagens, ocorrencias, estacoes_dim, estacoes_real
 
 
-@st.cache_data
-def build_station_lookup(dim_estacoes):
-    return {row["estacao_id"]: row["nome_estacao"] for _, row in dim_estacoes.iterrows()}
+def normalized(value):
+    value = unicodedata.normalize("NFKD", str(value).strip().casefold())
+    return " ".join("".join(c for c in value if not unicodedata.combining(c)).split())
 
 
-@st.cache_data
 def demo_users():
-    users = pd.read_csv(SIM_DIR / "dim_usuario.csv", sep=";")
-    return users[users["dados_sinteticos"].astype(bool)]
+    users = load_data(str(DATA_DIR))[0]
+    return users.loc[users["dados_sinteticos"]]
 
 
 def phone_shell():
     st.markdown(
         """
         <style>
+        /* Os widgets precisam estar no contêiner real do Streamlit.
+           Uma div aberta em st.markdown não envolve os widgets seguintes. */
         .block-container {
-            padding-top: 0.5rem;
-            padding-bottom: 0.5rem;
+            max-width: 460px;
+            margin: 3.5rem auto 1rem auto;
+            background: var(--background-color, #ffffff);
+            border-radius: 28px;
+            border: 1px solid #dfe8f3;
+            box-shadow: 0 20px 45px rgba(14, 30, 66, 0.12);
+            padding: 16px 14px 24px 14px;
         }
         div[data-testid="stAppViewContainer"] {
             background: linear-gradient(180deg, #eef6ff 0%, #ffffff 35%, #f4f7fb 100%);
         }
-        [data-testid="stSidebar"] {display: none;}
-        .phone-frame {
-            max-width: 420px;
-            min-height: 90vh;
-            margin: 0 auto;
-            background: #ffffff;
-            border-radius: 28px;
-            border: 1px solid #dfe8f3;
-            box-shadow: 0 20px 45px rgba(14, 30, 66, 0.12);
-            padding: 16px 14px 20px 14px;
+        @media (max-width: 480px) {
+            .block-container { border-radius: 16px; margin-top: 3.5rem; }
         }
         .app-header {
             display: flex;
@@ -114,13 +150,12 @@ def phone_shell():
 
 
 def format_status(value):
-    if value is None:
+    if value is None or pd.isna(value) or str(value).strip() == "":
         return "Sem dado"
     return str(value).replace("_", " ").title()
 
 
 def login_signup_screen():
-    st.markdown('<div class="phone-frame">', unsafe_allow_html=True)
 
     st.markdown(
         """
@@ -132,30 +167,36 @@ def login_signup_screen():
         unsafe_allow_html=True,
     )
 
+    st.caption("Acesso simulado, sem senha. Use apenas perfis fictícios.")
     tab1, tab2 = st.tabs(["Entrar", "Cadastrar"])
+    st.caption("Perfis disponíveis: " + ", ".join(demo_users()["nome"].tolist()))
 
     with tab1:
         with st.form("login_form"):
             nome = st.text_input("Nome", key="login_nome")
-            senha = st.text_input("Senha", type="password", key="login_senha")
             submitted = st.form_submit_button("Entrar", use_container_width=True)
 
         if submitted:
             users = demo_users()
-            match = users[users["nome"].astype(str).str.lower() == nome.strip().lower()]
-            if not match.empty:
+            names = users["nome"].map(normalized)
+            typed_name = normalized(nome)
+            match = users.loc[names == typed_name]
+            if match.empty and typed_name:
+                match = users.loc[names.str.split().str[0] == typed_name]
+            if len(match) == 1:
                 st.session_state["logged_in"] = True
                 st.session_state["usuario_logado"] = match.iloc[0].to_dict()
                 st.session_state["app_phase"] = 1
                 st.rerun()
             else:
-                st.error("Usuário não encontrado. Use um perfil da demonstração ou cadastre um novo.")
+                st.error("Informe um nome da demonstração. Se houver nomes repetidos, use o nome completo.")
 
     with tab2:
         with st.form("cadastro_form"):
             nome_novo = st.text_input("Seu nome", key="cadastro_nome")
-            senha_nova = st.text_input("Crie uma senha", type="password", key="cadastro_senha")
             necessidade = st.selectbox("Precisa de apoio principal?", ["Nenhuma", "Mobilidade", "Visual", "Auditiva", "Cognitiva"])
+            cadeira_rodas = st.checkbox("Utilizo cadeira de rodas")
+            sem_escadas = st.checkbox("Preciso de percurso sem escadas")
             assistencia = st.checkbox("Quero facilitar o suporte durante a viagem")
             enviar = st.form_submit_button("Criar conta", use_container_width=True)
 
@@ -164,9 +205,9 @@ def login_signup_screen():
             st.session_state["usuario_logado"] = {
                 "nome": nome_novo.strip(),
                 "deficiencia_informada": necessidade,
-                "usa_cadeira_rodas": necessidade == "Mobilidade",
+                "usa_cadeira_rodas": cadeira_rodas,
                 "preferencia_comunicacao": "app",
-                "necessita_percurso_sem_escadas": necessidade == "Mobilidade",
+                "necessita_percurso_sem_escadas": sem_escadas,
                 "prefere_orientacao_embarque": assistencia,
                 "solicita_acompanhamento": assistencia,
                 "usuario_id": "USR-DEMO",
@@ -175,16 +216,17 @@ def login_signup_screen():
             st.session_state["app_phase"] = 1
             st.rerun()
 
-    st.markdown("</div>", unsafe_allow_html=True)
 
 
 def rotina_screen():
     usuario = st.session_state["usuario_logado"]
-    users, rotinas, viagens, ocorrencias, estacoes_dim, estacoes_real = load_data()
-    station_lookup = build_station_lookup(estacoes_dim)
-    estacoes = [row["nome_estacao"] for _, row in estacoes_dim.iterrows()]
+    users, rotinas, viagens, ocorrencias, estacoes_dim, estacoes_real = load_data(str(DATA_DIR))
+    estacoes = estacoes_dim["nome_estacao"].str.strip()
+    estacoes = estacoes[estacoes.ne("")].drop_duplicates().tolist()
+    if len(estacoes) < 2:
+        st.warning("Cadastre pelo menos duas estações para escolher o percurso.")
+        return
 
-    st.markdown('<div class="phone-frame">', unsafe_allow_html=True)
     st.markdown(
         """
         <div class="app-header">
@@ -211,6 +253,10 @@ def rotina_screen():
         with col2:
             agora_nao = st.form_submit_button("Agora não", use_container_width=True)
 
+    if salvar and (origem == destino or not dias):
+        st.warning("Escolha estações diferentes e pelo menos um dia da semana.")
+        return
+
     if salvar:
         st.session_state["rotina"] = {
             "origem": origem,
@@ -230,20 +276,17 @@ def rotina_screen():
         st.info("Você pode configurar a rotina depois. A demonstração segue com o cenário atual.")
         st.rerun()
 
-    st.markdown("</div>", unsafe_allow_html=True)
 
 
 def dashboard_screen():
     usuario = st.session_state["usuario_logado"]
-    users, rotinas, viagens, ocorrencias, estacoes_dim, estacoes_real = load_data()
-    station_lookup = build_station_lookup(estacoes_dim)
+    users, rotinas, viagens, ocorrencias, estacoes_dim, estacoes_real = load_data(str(DATA_DIR))
 
-    st.markdown('<div class="phone-frame">', unsafe_allow_html=True)
     st.markdown(
         """
         <div class="app-header">
             <div><strong>Minha viagem</strong><br><span style='font-size: 0.8rem; color: #64748b;'>Fase 3</span></div>
-            <span class="pill">Online</span>
+            <span class="pill">Simulação</span>
         </div>
         """,
         unsafe_allow_html=True,
@@ -251,16 +294,27 @@ def dashboard_screen():
 
     st.subheader(f"Bem-vindo, {usuario['nome']}")
 
-    status_busca = st.selectbox("Selecione a rotina", ["Trabalho", "Estudo", "Consulta", "Lazer"], index=0)
     hora_demo = st.slider("Hora da simulação", 0, 23, 7)
-    ocorrencia = ocorrencias[ocorrencias["hora"] == hora_demo].iloc[0]
+    if "data" in ocorrencias.columns:
+        datas = ocorrencias["data"].drop_duplicates().sort_values().tolist()
+        if len(datas) > 1:
+            data_demo = st.selectbox("Data da simulação", datas)
+            ocorrencias = ocorrencias.loc[ocorrencias["data"] == data_demo]
+    matches = ocorrencias.loc[ocorrencias["hora"] == hora_demo]
+    if matches.empty:
+        st.warning(f"Sem dados simulados para {hora_demo:02d}:00. Escolha outro horário.")
+        return
+    if len(matches) != 1:
+        st.warning("Há mais de um registro para esse horário. Confira dim_ocorrencia.csv.")
+        return
+    ocorrencia = matches.iloc[0]
 
     st.markdown(
         f"""
         <div class="status-card">
             <div style="font-size: 0.75rem; color: #475569; text-transform: uppercase; letter-spacing: 0.08em;">Situação da linha</div>
-            <div style="font-size: 1.3rem; font-weight: 800; margin-top: 6px;">{format_status(ocorrencia['status_operacao'])}</div>
-            <div style="margin-top: 6px; color: #334155;">{ocorrencia['impacto_usuarios']}</div>
+            <div style="font-size: 1.3rem; font-weight: 800; margin-top: 6px;">{escape(format_status(ocorrencia['status_operacao']))}</div>
+            <div style="margin-top: 6px; color: #334155;">{escape(str(ocorrencia['impacto_usuarios']))}</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -272,16 +326,12 @@ def dashboard_screen():
     with cols[1]:
         st.metric("Horario", f"{int(ocorrencia['hora']):02d}:00")
 
-    st.markdown("<div class='support-grid'>", unsafe_allow_html=True)
     actions = [
         ("🛟", "Suporte técnico"),
         ("❓", "Ajuda"),
         ("📅", "Agendamento"),
         ("🤝", "Assistência"),
     ]
-    for icon, label in actions:
-        col = st.columns(2)[0] if False else None
-    st.markdown("</div>", unsafe_allow_html=True)
 
     action_cols = st.columns(2)
     for idx, (icon, label) in enumerate(actions):
@@ -294,24 +344,41 @@ def dashboard_screen():
         st.info(f"Ação ativa: {st.session_state['action_message']}")
 
     st.markdown("### Detalhes da viagem")
-    origem = "Palmeiras-Barra Funda"
-    destino = "Lapa"
+    rotina = st.session_state.get("rotina", {})
+    origem = rotina.get("origem", "")
+    destino = rotina.get("destino", "")
+    if not origem or not destino:
+        st.info("Configure uma rotina para consultar as estações do percurso.")
+        if st.button("Configurar rotina"):
+            st.session_state["app_phase"] = 1
+            st.rerun()
+        return
     st.markdown(
-        """
+        f"""
         <div class='card'>
-            <div style='font-size: 0.8rem; color: #64748b;'>Rota atual</div>
-            <div style='font-size: 1.2rem; font-weight: 700; margin-top: 6px;'>Palmeiras-Barra Funda → Lapa</div>
-            <div style='color: #475569; margin-top: 8px;'>Saída: 07:30 · Duração: 15 min · Assistência prevista: Sim</div>
+            <div style='font-size: 0.8rem; color: #64748b;'>Rota informada</div>
+            <div style='font-size: 1.2rem; font-weight: 700; margin-top: 6px;'>{escape(origem)} → {escape(destino)}</div>
         </div>
         """,
         unsafe_allow_html=True,
     )
+    if rotina.get("horario"):
+        st.write("Horário habitual: " + rotina["horario"][:5])
+    else:
+        st.caption("Consulta avulsa; rotina ainda não salva.")
 
     st.markdown("### Acessibilidade da estação")
-    estacao_origem = estacoes_real[estacoes_real["estacao"] == origem].iloc[0]
-    estacao_destino = estacoes_real[estacoes_real["estacao"] == destino].iloc[0]
+    st.caption("Cadastro estático: os itens abaixo não confirmam funcionamento atual.")
+    stations = estacoes_real["estacao"].map(normalized)
+    origem_rows = estacoes_real.loc[stations == normalized(origem)]
+    destino_rows = estacoes_real.loc[stations == normalized(destino)]
+    estacao_origem = origem_rows.iloc[0] if len(origem_rows) == 1 else None
+    estacao_destino = destino_rows.iloc[0] if len(destino_rows) == 1 else None
 
     for label, estacao in [("Origem", estacao_origem), ("Destino", estacao_destino)]:
+        if estacao is None:
+            st.warning(f"{label}: cadastro ausente ou ambíguo para esta estação.")
+            continue
         st.write(f"{label}: {estacao['estacao']}")
         st.json(
             {
@@ -324,9 +391,12 @@ def dashboard_screen():
         )
 
     st.markdown("### Status do apoio")
-    status = st.radio("Estado da solicitação", ["Pendente", "Confirmado", "Concluído"], horizontal=True)
+    st.caption("Controle da demonstração: simula o estado de um pedido, sem contato com a operadora.")
+    request_key = f"apoio_{usuario['usuario_id']}_{origem}_{destino}_{hora_demo}"
+    status = st.radio("Estado da solicitação simulada", ["Pendente", "Confirmado", "Concluído"],
+                      horizontal=True, key=request_key)
     if status == "Confirmado":
-        st.success("Responsável designado: João da operação de apoio. Ponto de encontro: plataforma central.")
+        st.success("Confirmação simulada. Responsável fictício: João da equipe de apoio. Ponto de encontro ilustrativo: entrada principal.")
     elif status == "Pendente":
         st.warning("Solicitação em análise. Aguarde confirmação da equipe de suporte.")
     else:
@@ -336,12 +406,19 @@ def dashboard_screen():
         st.session_state.clear()
         st.rerun()
 
-    st.markdown("</div>", unsafe_allow_html=True)
 
 
 def main():
     st.set_page_config(page_title="Embarque Inclusivo", page_icon="🚉", layout="centered")
     phone_shell()
+    st.caption("Demonstração — usuários, operação e atendimento simulados")
+    try:
+        load_data(str(DATA_DIR))
+    except (OSError, ValueError, pd.errors.ParserError) as error:
+        st.error(f"Não foi possível carregar os dados: {error}")
+        st.info("Execute este arquivo dentro do repositório, mantendo a pasta data/ e os CSVs originais.")
+        st.code("python -m streamlit run app/src/streamlit_app.py", language="bash")
+        st.stop()
 
     if "logged_in" not in st.session_state:
         st.session_state["logged_in"] = False
