@@ -17,184 +17,345 @@ def load_data():
     estacoes_dim = pd.read_csv(SIM_DIR / "dim_estacao.csv", sep=";")
     estacoes_real = pd.read_csv(DATA_DIR / "estacoes_linha7.csv", sep=";")
 
-    estacoes_real = estacoes_real.fillna("")
-    estacoes_dim = estacoes_dim.fillna("")
+    for frame in [users, rotinas, viagens, ocorrencias, estacoes_dim, estacoes_real]:
+        frame.fillna("", inplace=True)
 
     return users, rotinas, viagens, ocorrencias, estacoes_dim, estacoes_real
 
 
 @st.cache_data
 def build_station_lookup(dim_estacoes):
-    return {
-        row["estacao_id"]: row["nome_estacao"]
-        for _, row in dim_estacoes.iterrows()
-    }
+    return {row["estacao_id"]: row["nome_estacao"] for _, row in dim_estacoes.iterrows()}
 
 
-def format_status(value: str) -> str:
-    return value.replace("_", " ").title()
+@st.cache_data
+def demo_users():
+    users = pd.read_csv(SIM_DIR / "dim_usuario.csv", sep=";")
+    return users[users["dados_sinteticos"].astype(bool)]
 
 
-def main():
-    st.set_page_config(page_title="Embarque Inclusivo", page_icon="🚉", layout="wide")
-    st.title("🚉 Embarque Inclusivo - Linha 7–Rubi")
-    st.caption("Demonstração sintética do MVP para mobilidade inclusiva")
+def phone_shell():
+    st.markdown(
+        """
+        <style>
+        .block-container {
+            padding-top: 0.5rem;
+            padding-bottom: 0.5rem;
+        }
+        div[data-testid="stAppViewContainer"] {
+            background: linear-gradient(180deg, #eef6ff 0%, #ffffff 35%, #f4f7fb 100%);
+        }
+        [data-testid="stSidebar"] {display: none;}
+        .phone-frame {
+            max-width: 420px;
+            min-height: 90vh;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 28px;
+            border: 1px solid #dfe8f3;
+            box-shadow: 0 20px 45px rgba(14, 30, 66, 0.12);
+            padding: 16px 14px 20px 14px;
+        }
+        .app-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 4px 14px 4px;
+            color: #1b2440;
+        }
+        .pill {
+            display: inline-block;
+            background: #eaf2ff;
+            color: #1d4ed8;
+            border-radius: 999px;
+            padding: 5px 10px;
+            font-size: 0.72rem;
+            font-weight: 700;
+        }
+        .status-card {
+            background: linear-gradient(135deg, #e0f2fe, #f0fdf4);
+            border-radius: 20px;
+            padding: 14px;
+            border: 1px solid #d4f1e3;
+            margin-bottom: 12px;
+        }
+        .support-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .mini-action {
+            background: #f5f8ff;
+            border-radius: 16px;
+            padding: 12px 10px;
+            border: 1px solid #dbeafe;
+            text-align: center;
+            font-weight: 600;
+            color: #1d4ed8;
+        }
+        .big-button {
+            width: 100%;
+            border-radius: 16px;
+            min-height: 52px;
+            font-weight: 700;
+        }
+        .card {
+            border-radius: 18px;
+            background: #f9fbff;
+            border: 1px solid #e5edf8;
+            padding: 14px;
+            margin-top: 10px;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
+
+def format_status(value):
+    if value is None:
+        return "Sem dado"
+    return str(value).replace("_", " ").title()
+
+
+def login_signup_screen():
+    st.markdown('<div class="phone-frame">', unsafe_allow_html=True)
+
+    st.markdown(
+        """
+        <div class="app-header">
+            <div><strong>Embarque Inclusivo</strong><br><span style='font-size: 0.8rem; color: #64748b;'>Acesso de demonstração</span></div>
+            <span class="pill">Demo</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    tab1, tab2 = st.tabs(["Entrar", "Cadastrar"])
+
+    with tab1:
+        with st.form("login_form"):
+            nome = st.text_input("Nome", key="login_nome")
+            senha = st.text_input("Senha", type="password", key="login_senha")
+            submitted = st.form_submit_button("Entrar", use_container_width=True)
+
+        if submitted:
+            users = demo_users()
+            match = users[users["nome"].astype(str).str.lower() == nome.strip().lower()]
+            if not match.empty:
+                st.session_state["logged_in"] = True
+                st.session_state["usuario_logado"] = match.iloc[0].to_dict()
+                st.session_state["app_phase"] = 1
+                st.rerun()
+            else:
+                st.error("Usuário não encontrado. Use um perfil da demonstração ou cadastre um novo.")
+
+    with tab2:
+        with st.form("cadastro_form"):
+            nome_novo = st.text_input("Seu nome", key="cadastro_nome")
+            senha_nova = st.text_input("Crie uma senha", type="password", key="cadastro_senha")
+            necessidade = st.selectbox("Precisa de apoio principal?", ["Nenhuma", "Mobilidade", "Visual", "Auditiva", "Cognitiva"])
+            assistencia = st.checkbox("Quero facilitar o suporte durante a viagem")
+            enviar = st.form_submit_button("Criar conta", use_container_width=True)
+
+        if enviar and nome_novo.strip():
+            st.session_state["logged_in"] = True
+            st.session_state["usuario_logado"] = {
+                "nome": nome_novo.strip(),
+                "deficiencia_informada": necessidade,
+                "usa_cadeira_rodas": necessidade == "Mobilidade",
+                "preferencia_comunicacao": "app",
+                "necessita_percurso_sem_escadas": necessidade == "Mobilidade",
+                "prefere_orientacao_embarque": assistencia,
+                "solicita_acompanhamento": assistencia,
+                "usuario_id": "USR-DEMO",
+                "dados_sinteticos": True,
+            }
+            st.session_state["app_phase"] = 1
+            st.rerun()
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+
+def rotina_screen():
+    usuario = st.session_state["usuario_logado"]
+    users, rotinas, viagens, ocorrencias, estacoes_dim, estacoes_real = load_data()
+    station_lookup = build_station_lookup(estacoes_dim)
+    estacoes = [row["nome_estacao"] for _, row in estacoes_dim.iterrows()]
+
+    st.markdown('<div class="phone-frame">', unsafe_allow_html=True)
+    st.markdown(
+        """
+        <div class="app-header">
+            <div><strong>Minha rotina</strong><br><span style='font-size: 0.8rem; color: #64748b;'>Fase 2</span></div>
+            <span class="pill">Perfil</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.subheader(f"Olá, {usuario['nome']}")
+
+    with st.form("rotina_form"):
+        origem = st.selectbox("Origem", estacoes, index=0)
+        destino = st.selectbox("Destino", estacoes, index=1)
+        horario = st.time_input("Horário habitual")
+        dias = st.multiselect("Dias da semana", ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"], default=["Segunda", "Quarta", "Sexta"])
+        apoio = st.checkbox("Preciso de ajuda no embarque")
+        necessidade = st.selectbox("Tipo de apoio", ["Nenhum", "Cadeira de rodas", "Orientação", "Apoio em embarque", "Agora não"])
+
+        col1, col2 = st.columns(2)
+        with col1:
+            salvar = st.form_submit_button("Salvar rotina", use_container_width=True)
+        with col2:
+            agora_nao = st.form_submit_button("Agora não", use_container_width=True)
+
+    if salvar:
+        st.session_state["rotina"] = {
+            "origem": origem,
+            "destino": destino,
+            "horario": str(horario),
+            "dias": dias,
+            "apoio": apoio,
+            "tipo_apoio": necessidade,
+        }
+        st.session_state["app_phase"] = 2
+        st.success("Rotina salva com sucesso.")
+        st.rerun()
+
+    if agora_nao:
+        st.session_state["rotina"] = {"status": "Agora não", "origem": origem, "destino": destino}
+        st.session_state["app_phase"] = 2
+        st.info("Você pode configurar a rotina depois. A demonstração segue com o cenário atual.")
+        st.rerun()
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+
+def dashboard_screen():
+    usuario = st.session_state["usuario_logado"]
     users, rotinas, viagens, ocorrencias, estacoes_dim, estacoes_real = load_data()
     station_lookup = build_station_lookup(estacoes_dim)
 
-    usuarios = users[users["dados_sinteticos"].astype(bool)]
-    usuario_selecionado = st.sidebar.selectbox("Usuário fictício", usuarios["nome"].tolist())
-    usuario = usuarios[usuarios["nome"] == usuario_selecionado].iloc[0]
-
-    todas_viagens = viagens[viagens["usuario_id"] == usuario["usuario_id"]].copy()
-    rotinas_do_usuario = rotinas[
-        rotinas["rotina_id"].isin(todas_viagens["rotina_id"].unique())
-    ].copy()
-
-    if rotinas_do_usuario.empty:
-        st.warning("Nenhuma rotina encontrada para o usuário selecionado.")
-        return
-
-    rotina_principal = rotinas_do_usuario.iloc[0]
-    user_triage = st.sidebar.selectbox(
-        "Trecho planejado",
-        [
-            f"{row['sentido'].title()} - {station_lookup.get(row['estacao_origem_id'])} → {station_lookup.get(row['estacao_destino_id'])}"
-            for _, row in todas_viagens.iterrows()
-        ],
+    st.markdown('<div class="phone-frame">', unsafe_allow_html=True)
+    st.markdown(
+        """
+        <div class="app-header">
+            <div><strong>Minha viagem</strong><br><span style='font-size: 0.8rem; color: #64748b;'>Fase 3</span></div>
+            <span class="pill">Online</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
-    selected_trip_index = [
-        f"{row['sentido'].title()} - {station_lookup.get(row['estacao_origem_id'])} → {station_lookup.get(row['estacao_destino_id'])}"
-        for _, row in todas_viagens.iterrows()
-    ].index(user_triage)
-    viagem = todas_viagens.iloc[selected_trip_index]
+    st.subheader(f"Bem-vindo, {usuario['nome']}")
 
-    hora_demo = st.sidebar.slider("Hora da viagem (simulação)", 0, 23, int(viagem["tempo_saida_id"].split("-")[-1][:2] if "TMP-" in viagem["tempo_saida_id"] else 8))
+    status_busca = st.selectbox("Selecione a rotina", ["Trabalho", "Estudo", "Consulta", "Lazer"], index=0)
+    hora_demo = st.slider("Hora da simulação", 0, 23, 7)
+    ocorrencia = ocorrencias[ocorrencias["hora"] == hora_demo].iloc[0]
 
-    ocorrencia_atual = ocorrencias[ocorrencias["hora"] == hora_demo].iloc[0]
-
-    origem_nome = station_lookup.get(viagem["estacao_origem_id"], "Estação desconhecida")
-    destino_nome = station_lookup.get(viagem["estacao_destino_id"], "Estação desconhecida")
-
-    origem_real = estacoes_real[estacoes_real["estacao"] == origem_nome]
-    destino_real = estacoes_real[estacoes_real["estacao"] == destino_nome]
-
-    st.subheader(f"Perfil do usuário: {usuario['nome']}")
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Idade", int(usuario["idade_referencia"]))
-    col2.metric("Deficiência informada", usuario["deficiencia_informada"])
-    col3.metric("Usa cadeira de rodas", "Sim" if usuario["usa_cadeira_rodas"] else "Não")
-    col4.metric("Apoio solicitado", "Sim" if usuario["solicita_acompanhamento"] else "Não")
-
-    st.markdown("### Necessidades e preferências")
-    st.write(
-        f"- Preferência de comunicação: {usuario['preferencia_comunicacao']}\n"
-        f"- Percurso sem escadas: {'Sim' if usuario['necessita_percurso_sem_escadas'] else 'Não'}\n"
-        f"- Orientação de embarque: {'Sim' if usuario['prefere_orientacao_embarque'] else 'Não'}\n"
-        f"- Acompanhamento: {'Sim' if usuario['solicita_acompanhamento'] else 'Não'}"
+    st.markdown(
+        f"""
+        <div class="status-card">
+            <div style="font-size: 0.75rem; color: #475569; text-transform: uppercase; letter-spacing: 0.08em;">Situação da linha</div>
+            <div style="font-size: 1.3rem; font-weight: 800; margin-top: 6px;">{format_status(ocorrencia['status_operacao'])}</div>
+            <div style="margin-top: 6px; color: #334155;">{ocorrencia['impacto_usuarios']}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
-    st.markdown("### Rotina e viagem")
-    colA, colB = st.columns(2)
-    with colA:
-        st.info(f"Rotina principal: {rotina_principal['nome_rotina']}")
-        st.write(f"Objetivo: {rotina_principal['objetivo']}")
-        st.write(
-            "Dias ativos: "
-            + ", ".join(
-                [
-                    dia
-                    for dia, ativo in {
-                        "Segunda": rotina_principal["segunda"],
-                        "Terça": rotina_principal["terca"],
-                        "Quarta": rotina_principal["quarta"],
-                        "Quinta": rotina_principal["quinta"],
-                        "Sexta": rotina_principal["sexta"],
-                        "Sábado": rotina_principal["sabado"],
-                        "Domingo": rotina_principal["domingo"],
-                    }.items()
-                    if ativo
-                ]
-            )
-        )
-    with colB:
-        st.success(f"Trecho selecionado: {origem_nome} → {destino_nome}")
-        st.write(f"Sentido: {viagem['sentido']}")
-        st.write(f"Duração planejada: {int(viagem['duracao_planejada_minutos'])} minutos")
-        st.write(f"Antecedência de assistência: {int(viagem['antecedencia_assistencia_minutos'])} minutos")
-        st.write(f"Assistência prevista: {'Sim' if viagem['assistencia_prevista'] else 'Não'}")
+    cols = st.columns(2)
+    with cols[0]:
+        st.metric("Movimento", format_status(ocorrencia["movimento"]))
+    with cols[1]:
+        st.metric("Horario", f"{int(ocorrencia['hora']):02d}:00")
 
-    st.markdown("### Situação operacional da Linha 7–Rubi")
-    cols = st.columns(4)
-    cols[0].metric("Status", format_status(ocorrencia_atual["status_operacao"]))
-    cols[1].metric("Movimento", format_status(ocorrencia_atual["movimento"]))
-    cols[2].metric("Hora", f"{int(ocorrencia_atual['hora']):02d}:00")
-    cols[3].metric("Estações afetadas", ocorrencia_atual["estacoes_afetadas"][:25] + ("..." if len(ocorrencia_atual["estacoes_afetadas"]) > 25 else ""))
+    st.markdown("<div class='support-grid'>", unsafe_allow_html=True)
+    actions = [
+        ("🛟", "Suporte técnico"),
+        ("❓", "Ajuda"),
+        ("📅", "Agendamento"),
+        ("🤝", "Assistência"),
+    ]
+    for icon, label in actions:
+        col = st.columns(2)[0] if False else None
+    st.markdown("</div>", unsafe_allow_html=True)
 
-    st.warning(ocorrencia_atual["impacto_usuarios"])
-    st.caption(ocorrencia_atual["descricao"])
+    action_cols = st.columns(2)
+    for idx, (icon, label) in enumerate(actions):
+        with action_cols[idx % 2]:
+            if st.button(f"{icon} {label}", key=f"action_{idx}", use_container_width=True):
+                st.session_state["action_message"] = label
+                st.toast(f"{label} acionado na demonstração.")
 
-    st.markdown("### Acessibilidade das estações")
-    st.write("Origem:", origem_nome)
-    if not origem_real.empty:
-        origem_features = origem_real.iloc[0]
+    if "action_message" in st.session_state:
+        st.info(f"Ação ativa: {st.session_state['action_message']}")
+
+    st.markdown("### Detalhes da viagem")
+    origem = "Palmeiras-Barra Funda"
+    destino = "Lapa"
+    st.markdown(
+        """
+        <div class='card'>
+            <div style='font-size: 0.8rem; color: #64748b;'>Rota atual</div>
+            <div style='font-size: 1.2rem; font-weight: 700; margin-top: 6px;'>Palmeiras-Barra Funda → Lapa</div>
+            <div style='color: #475569; margin-top: 8px;'>Saída: 07:30 · Duração: 15 min · Assistência prevista: Sim</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown("### Acessibilidade da estação")
+    estacao_origem = estacoes_real[estacoes_real["estacao"] == origem].iloc[0]
+    estacao_destino = estacoes_real[estacoes_real["estacao"] == destino].iloc[0]
+
+    for label, estacao in [("Origem", estacao_origem), ("Destino", estacao_destino)]:
+        st.write(f"{label}: {estacao['estacao']}")
         st.json(
             {
-                "banheiro acessível feminino": origem_features.get("banheiro_acessivel_feminino", ""),
-                "banheiro acessível masculino": origem_features.get("banheiro_acessivel_masculino", ""),
-                "banheiro acessível unissex": origem_features.get("banheiro_acessivel_unissex", ""),
-                "elevador": origem_features.get("elevador", ""),
-                "rampa": origem_features.get("rampa", ""),
-                "piso tátil": origem_features.get("piso_tatil", ""),
-                "transposição de plataformas": origem_features.get("transposicao_de_plataformas", ""),
-                "telefone adaptado para PCR": origem_features.get("telefone_adaptado_pcr", ""),
+                "elevador": estacao.get("elevador"),
+                "rampa": estacao.get("rampa"),
+                "piso_tatil": estacao.get("piso_tatil"),
+                "banheiro_acessivel_unissex": estacao.get("banheiro_acessivel_unissex"),
+                "transposicao_de_plataformas": estacao.get("transposicao_de_plataformas"),
             }
         )
-    else:
-        st.write("Dados de acessibilidade não disponíveis para esta estação no cadastro real.")
 
-    st.write("Destino:", destino_nome)
-    if not destino_real.empty:
-        destino_features = destino_real.iloc[0]
-        st.json(
-            {
-                "banheiro acessível feminino": destino_features.get("banheiro_acessivel_feminino", ""),
-                "banheiro acessível masculino": destino_features.get("banheiro_acessivel_masculino", ""),
-                "banheiro acessível unissex": destino_features.get("banheiro_acessivel_unissex", ""),
-                "elevador": destino_features.get("elevador", ""),
-                "rampa": destino_features.get("rampa", ""),
-                "piso tátil": destino_features.get("piso_tatil", ""),
-                "transposição de plataformas": destino_features.get("transposicao_de_plataformas", ""),
-                "telefone adaptado para PCR": destino_features.get("telefone_adaptado_pcr", ""),
-            }
-        )
+    st.markdown("### Status do apoio")
+    status = st.radio("Estado da solicitação", ["Pendente", "Confirmado", "Concluído"], horizontal=True)
+    if status == "Confirmado":
+        st.success("Responsável designado: João da operação de apoio. Ponto de encontro: plataforma central.")
+    elif status == "Pendente":
+        st.warning("Solicitação em análise. Aguarde confirmação da equipe de suporte.")
     else:
-        st.write("Dados de acessibilidade não disponíveis para esta estação no cadastro real.")
+        st.info("Suporte concluído e acompanhamento encerrado para esta viagem.")
 
-    st.markdown("### Históricos do usuário")
-    st.dataframe(
-        todas_viagens[[
-            "viagem_planejada_id",
-            "sentido",
-            "estacao_origem_id",
-            "estacao_destino_id",
-            "duracao_planejada_minutos",
-            "assistencia_prevista",
-        ]].assign(
-            estacao_origem=lambda df: df["estacao_origem_id"].map(station_lookup),
-            estacao_destino=lambda df: df["estacao_destino_id"].map(station_lookup),
-        )[[
-            "viagem_planejada_id",
-            "sentido",
-            "estacao_origem",
-            "estacao_destino",
-            "duracao_planejada_minutos",
-            "assistencia_prevista",
-        ]],
-        use_container_width=True,
-    )
+    if st.button("Logout", use_container_width=True):
+        st.session_state.clear()
+        st.rerun()
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+
+def main():
+    st.set_page_config(page_title="Embarque Inclusivo", page_icon="🚉", layout="centered")
+    phone_shell()
+
+    if "logged_in" not in st.session_state:
+        st.session_state["logged_in"] = False
+    if "app_phase" not in st.session_state:
+        st.session_state["app_phase"] = 0
+
+    if not st.session_state["logged_in"]:
+        login_signup_screen()
+    elif st.session_state["app_phase"] == 0:
+        login_signup_screen()
+    elif st.session_state["app_phase"] == 1:
+        rotina_screen()
+    else:
+        dashboard_screen()
 
 
 if __name__ == "__main__":
