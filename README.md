@@ -1,48 +1,158 @@
 # hackathon-embarque-inclusivo
 
-MVP de mobilidade inclusiva para a Linha 7–Rubi, com foco em facilitar o acesso à informação e o planejamento de viagens de pessoas com deficiência (PCD).
+## Visão geral
 
-## Objetivo
+Este repositório documenta um MVP de aplicativo de mobilidade inclusiva para a Linha 7–Rubi, em São Paulo, pensado para apresentação em hackathon e como material de portfólio.
 
-Reunir informações sobre estações, acessibilidade e condições operacionais em uma interface simples, permitindo ao passageiro consultar seu percurso, solicitar assistência e acompanhar o atendimento. O projeto também pretende transformar relatos dos usuários em dados estruturados que possam apoiar melhorias no serviço.
+O objetivo do projeto é facilitar a viagem de pessoas que precisam de apoio, ajudando a relacionar informações de acessibilidade com as condições reais do percurso e com necessidades específicas da pessoa. A proposta não assume parceria com a operadora nem promete atendimento real ou percurso garantido.
 
-## Problemas que queremos resolver
+## Estado real do repositório
 
-| Problema | Solução proposta |
-| --- | --- |
-| Dificuldade para encontrar informações de acessibilidade relevantes para a viagem | Centralizar os recursos das estações de origem e destino, de acordo com o apoio necessário ao passageiro |
-| Incerteza sobre as condições do percurso | Apresentar informações disponíveis com fonte, horário de atualização e indicação de dados ainda não confirmados |
-| Falta de previsibilidade sobre a assistência | Permitir solicitar apoio e acompanhar confirmação, responsável e ponto de encontro |
-| Relatos dispersos em mensagens de texto | Registrar e classificar relatos por estação, assunto, problema e sentimento |
+O repositório ainda está em fase de documentação e planejamento. Não há implementação do protótipo, nem infraestrutura, nem dados persistentes configurados.
 
-O atendimento PCD será o principal caso de uso do MVP. Consultas de informações e envio de relatos também poderão atender ao público geral.
+O único arquivo de código presente é [ingestao-bronze/src/api.py](ingestao-bronze/src/api.py), que se configura como um placeholder de uma proposta anterior e não deve ser interpretado como funcionalidade atual do MVP.
 
-## Como será desenvolvido
+## Problema a ser mostrado
 
-A interface inicial será construída em **Streamlit**, com **FastAPI** para disponibilizar consultas e gerenciar solicitações. A coleta utilizará APIs REST quando disponíveis e requisições HTTP com BeautifulSoup para informações publicadas em páginas web.
+As pessoas que viajam por transporte público muitas vezes encontram dificuldade para responder perguntas simples e essenciais:
 
-Os dados serão armazenados em um **data lake no Amazon S3**, organizados em dois domínios: **estações e operação** e **interações e atendimentos**. Cada domínio seguirá a arquitetura medallion:
+- qual estação oferece acessibilidade relevante para o meu caso;
+- o percurso tem algum ponto problemático;
+- o equipamento necessário está disponível;
+- como solicitar apoio durante a viagem;
+- qual é o estado real da assistência solicitada.
 
-- **Bronze:** dados brutos das fontes, textos dos relatos e eventos de atendimento, com identificação da origem e do momento do registro.
-- **Silver:** limpeza e padronização em Python, tratamento de duplicidades e extração de informações dos textos, incluindo intenção, estação, assunto e sentimento.
-- **Gold:** dados consolidados para consulta pela aplicação, acompanhamento da assistência e síntese dos feedbacks.
+O MVP tem como diferencial explicar por que uma condição do percurso afeta a viagem de uma pessoa específica, e não apenas apresentar um resumo genérico de acessibilidade.
 
-O cadastro físico das estações será separado de sua condição operacional: a existência de um elevador não comprova que ele esteja funcionando naquele momento. A fonte para monitoramento em tempo real ainda será definida; a frequência de coleta respeitará a disponibilidade e a atualização de cada fonte.
+## Solução proposta
 
-## Demonstração do MVP
+A solução é um protótipo em Streamlit para celular, com jornada guiada de usuário fictício. O app reúne:
 
-1. O passageiro informa origem, destino, horário e necessidade de apoio.
-2. A aplicação apresenta as informações conhecidas sobre o percurso.
-3. O passageiro solicita assistência e acompanha seu estado.
-4. Um operador de demonstração atribui o responsável e confirma o ponto de encontro.
-5. O passageiro registra um relato, que é armazenado na Bronze e processado nas camadas seguintes.
+- informações de acessibilidade conhecidas das estações;
+- o perfil e as necessidades do usuário;
+- a rotina habitual de deslocamento;
+- o percurso selecionado;
+- condições operacionais simuladas e alertas relevantes;
+- a solicitação de assistência e o acompanhamento do estado.
 
-Um simulador fornecerá ocorrências e eventos de atendimento para testar situações como assistência confirmada, indisponibilidade de equipamento e solicitação pendente. Dados oficiais, relatos não verificados e dados simulados serão identificados separadamente.
+A experiência é pensada para demonstrar a decisão do usuário em cenas diferentes, sem afirmar que o atendimento foi confirmado por uma operadora real.
 
-A retroalimentação inicial ficará limitada ao registro e à análise das interações. Relatos não alterarão automaticamente o status oficial ou as orientações de viagem. O uso gerencial dos dados pela operadora será uma possibilidade de evolução, sem ser o foco da primeira entrega.
+## Funcionalidades planejadas
 
-## Status e alcance
+### Entrada e perfil
 
-Projeto em fase de concepção e desenvolvimento para hackathon e portfólio. As funcionalidades descritas representam o escopo planejado.
+- Conta de demonstração com usuário fictício.
+- Identificação clara de que não há autenticação real.
+- Preferências e necessidades de acessibilidade.
+- Informação sobre deficiência opcional, editável e sem exigência de diagnóstico.
+- Pergunta direta sobre o apoio necessário durante a viagem.
+- Suporte também para necessidades temporárias.
 
-O MVP é independente e não pressupõe vínculo ou integração com a TIC Trens. Confirmações de assistência na demonstração serão simuladas; atendimento real dependerá de integração e participação da operadora.
+### Rotina e viagem
+
+- Origem, destino, dias e horário habitual.
+- Possibilidade de selecionar ou alterar a rotina.
+- Consulta ao percurso e à acessibilidade conhecidas.
+- Condições simuladas e alertas relevantes.
+- Alternativas somente quando verificadas.
+- Limitação explicitada quando não houver alternativa confirmada.
+
+### Assistência
+
+- Solicitar apoio.
+- Acompanhar estados como pendente, confirmado e concluído.
+- Mostrar responsável e ponto de encontro fictícios quando houver confirmação simulada.
+- Evitar pedidos duplicados por repetição de clique ou atualização da interface.
+
+### Controles da demonstração
+
+- Selecionar cenário.
+- Avançar eventos.
+- Reiniciar a demonstração.
+- Manter esses controles separados da jornada do passageiro.
+
+## Arquitetura simplificada
+
+A estrutura abaixo é uma proposta para implementação futura e não representa código já implementado.
+
+```text
+app.py
+requirements.txt
+dados/
+    estacoes.json
+    usuario_demo.json
+    cenarios.json
+src/
+    dados.py
+    simulacao.py
+    viagem.py
+    assistencia.py
+    telas/
+        entrada.py
+        perfil.py
+        inicio.py
+        viagem.py
+docs/
+    roteiro_demo.md
+```
+
+Responsabilidades previstas:
+
+- app.py: início e navegação.
+- dados.py: carregamento e validação dos arquivos.
+- simulacao.py: cenários, avanço de eventos e reinício.
+- viagem.py: percurso e impacto das condições nas necessidades do usuário.
+- assistencia.py: estados e transições do atendimento.
+- telas/: apresentação e interação, sem concentrar regras de negócio.
+
+## Dados reais e simulados
+
+### Dados reais
+
+- Identificador e nome da estação.
+- Ordem da estação na linha.
+- Endereço e integrações, quando confirmados.
+- Recursos de acessibilidade publicados pela fonte.
+- URL da fonte e data da consulta.
+
+Esses dados devem ser tratados como cadastro estático real e não devem ser inventados nesta tarefa.
+
+### Dados simulados
+
+- Usuário fictício e suas preferências.
+- Movimento nas estações.
+- Condições operacionais.
+- Ocorrências.
+- Solicitações e confirmações de assistência.
+- Funcionários e pontos de encontro usados na demonstração.
+
+O aplicativo deve distinguir claramente entre informações reais e simulações, sem atribuir dados sintéticos à operadora como se fossem medições reais.
+
+## Quatro cenários do MVP
+
+Os cenários abaixo usam horários ilustrativos para a demonstração e não representam medição real de demanda da Linha 7.
+
+1. Baixo movimento: 22h, sem ocorrências.
+2. Movimento moderado: 14h, sem ocorrências.
+3. Horário de pico: 7h30, movimento intenso, sem ocorrências.
+4. Horário de pico com ocorrência: 7h30, movimento intenso e uma ocorrência programada.
+
+O horário não determina sozinho a existência de uma ocorrência. Os dois cenários de pico usam o mesmo horário para demonstrar o efeito do problema.
+
+No cenário 4, uma indisponibilidade simulada de elevador pode afetar um acesso necessário à viagem do usuário. O aplicativo explica esse impacto e permite solicitar orientação. Só oferece alternativa de percurso se houver uma verificada.
+
+## Regras e limitações atuais
+
+- O protótipo usa login e assistência simulados.
+- Não há autenticação real, nem coleta de senhas.
+- Não há persistência permanente na primeira versão.
+- Não há integração com a operadora e não há promessa de atendimento real.
+- Dados ausentes na fonte são tratados como “não informado”, não como “inexistente”.
+- Acessibilidade deve ser avaliada em relação ao percurso e ao apoio necessário.
+- Novas funcionalidades só entram por decisão explícita.
+
+## Estado do projeto
+
+Este projeto está em fase de planejamento e documentação para apresentação em hackathon. O documento de roteiro de demonstração em [docs/roteiro_demo.md](docs/roteiro_demo.md) detalha a jornada, os cenários e os critérios de prontidão.
+
+A implementação do MVP ainda não foi iniciada, e o trabalho documental deve continuar confirmando o escopo e evitando promessas que extrapolam o estado real do repositório.

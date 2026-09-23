@@ -1,91 +1,115 @@
 # AGENTS.md
 
-## 1. Finalidade e execução das tarefas
+## 1. Escopo e autonomia
 
-Estas regras se aplicam a todo o repositório **hackathon-embarque-inclusivo**. Arquivos `AGENTS.md` locais, quando existirem, complementam as orientações para seus diretórios.
+- A solicitação atual do autor define o escopo, a autonomia e os entregáveis.
+- Trabalhar em mudanças pequenas e revisáveis.
+- Ler o estado real do repositório antes de editar qualquer documentação ou implementação.
+- Preservar trabalho existente da dupla e evitar refatorações sem necessidade.
+- Não transformar sugestões ou ideias em requisitos obrigatórios sem autorização explícita.
+- Não iniciar etapas adicionais sem autorização.
 
-- A solicitação atual do autor define objetivo, escopo, autonomia e entregáveis. Não exigir um formulário de prompt para tarefas simples.
-- Trabalhar em unidades pequenas e revisáveis: entender, executar, validar e documentar o necessário.
-- Ler as instruções aplicáveis, os arquivos envolvidos e, quando existirem, o `STATUS.md` e as decisões relevantes antes de alterar a implementação.
-- Pesquisa não autoriza implementação. Concluir uma tarefa não autoriza iniciar a próxima, salvo autonomia já concedida.
-- Resolver detalhes internos dentro do escopo autorizado. Mudanças de arquitetura, tecnologias principais, fontes, contratos ou regras de negócio exigem autorização, caso ainda não esteja presente na solicitação.
-- Preservar alterações da dupla e componentes funcionais. Não fazer refatorações, reorganizações ou mudanças destrutivas sem necessidade e autorização adequadas.
+## 2. Estado real do repositório
 
-## 2. Objetivo e limites do projeto
+Este repositório está em fase de documentação e planejamento para um MVP de apresentação em hackathon. Não há protótipo funcional implementado nesta etapa.
 
-O projeto é um MVP para hackathon e portfólio, com recorte na **Linha 7–Rubi**. O foco é facilitar o acesso à informação e o planejamento de viagens, principalmente para pessoas com deficiência, além de registrar relatos dos passageiros.
+- O arquivo [ingestao-bronze/src/api.py](ingestao-bronze/src/api.py) aparece apenas como placeholder de uma proposta anterior e não deve ser tratado como funcionalidade atual.
+- O projeto não deve apresentar integração real com a operadora, nem prometer atendimento em produção.
+- O foco atual é a jornada demonstrada e a documentação do escopo proposto.
 
-A jornada prioritária é consultar o percurso, informar o apoio necessário, solicitar assistência e acompanhar confirmação, responsável e ponto de encontro. Consultas e relatos também atendem ao público geral.
+## 3. Novo objetivo do projeto
 
-- Priorizar uma jornada demonstrável e compreensível ao passageiro.
-- A operação de atendimento será simulada enquanto não houver integração real com a operadora. Não presumir vínculo com a TIC Trens.
-- Não apresentar uma solicitação como atendimento confirmado, nem prometer percurso garantido.
-- Dashboard empresarial amplo, app nativo, WhatsApp, expansão para outras linhas e decisões automáticas baseadas em relatos são evoluções, não requisitos da primeira entrega.
-- Não transformar possibilidades discutidas em funcionalidades obrigatórias sem decisão do autor.
+Nome: hackathon-embarque-inclusivo.
 
-## 3. Arquitetura acordada
+Recorte: Linha 7–Rubi, em São Paulo.
 
-- **Streamlit:** interface inicial do MVP. Outra interface web depende de decisão posterior.
-- **FastAPI:** API REST para consultas, solicitações e regras da aplicação.
-- **Python:** coleta e transformação; BeautifulSoup quando a fonte oferecer HTML e APIs REST quando disponíveis.
-- **Amazon S3:** armazenamento do data lake do MVP. Não tratá-lo como banco relacional ou pressupor transações e atualizações concorrentes de registros.
-- Não introduzir dbt, orquestradores, novos bancos ou serviços sem necessidade concreta e autorização compatível com a tarefa.
+Proposta: um protótipo de aplicativo para mobilidade inclusiva que reúne informações de acessibilidade, considera necessidades e rotinas do passageiro e facilita a solicitação de assistência durante a viagem.
 
-Manter dois domínios lógicos: **estações e operação** e **interações e atendimentos**. Ambos seguem Bronze, Silver e Gold; isso não exige buckets ou infraestrutura física separados.
+O foco do hackathon é demonstrar a jornada de um usuário fictício em diferentes situações e mostrar como o aplicativo reage. O projeto também serve como portfólio, mas a arquitetura de dados não deve ampliar desnecessariamente o escopo.
 
-| Camada | Responsabilidade |
-| --- | --- |
-| Bronze | Preservar dados brutos necessários, texto original dos relatos e eventos, com origem e horários |
-| Silver | Limpar e padronizar em Python, tratar duplicidades e extrair informações dos textos |
-| Gold | Preparar dados consolidados para consulta, acompanhamento e síntese de feedbacks |
+## 4. Decisões de arquitetura atuais
 
-Separar acesso externo, storage, transformação, regras e interface. A Gold fornece dados preparados; a API executa as regras e os entrega à aplicação. Criar módulos e diretórios conforme a implementação exigir, sem scaffolding vazio.
+- Python e Streamlit como base para o protótipo web, pensado para uso no celular.
+- Prototipo não apresentado como aplicativo mobile nativo.
+- Arquivos JSON para cadastro de estações, usuário fictício, rotinas e cenários.
+- Estado das interações mantido inicialmente na sessão do Streamlit.
+- Sem persistência permanente nesta primeira versão; encerrar a sessão pode reiniciar as interações.
+- Entrada com conta de demonstração e login explicitamente simulado, sem autenticação real ou coleta de senhas.
+- Sem arquitetura medallion.
+- Sem Amazon S3, FastAPI, banco de dados, pipelines recorrentes, cloud ou serviços extras como requisitos do MVP.
+- Sem análise de sentimento, processamento de relatos, dashboard empresarial, WhatsApp ou retroalimentação no escopo atual.
+- Novas funcionalidades só entram por decisão futura explícita.
 
-## 4. Fontes e confiabilidade dos dados
+Manter separação simples entre dados, regras da aplicação e telas. Evitar abstrações ou serviços sem necessidade concreta.
 
-- Separar cadastro físico de condição operacional: possuir elevador não significa que ele esteja funcionando.
-- O site oficial é fonte das informações que efetivamente publica. Monitoramento em tempo real depende de uma fonte ainda a validar; não inventar endpoints, cobertura ou frequência de atualização.
-- Consultas periódicas são polling. Não chamar dados antigos de tempo real porque o coletor executa frequentemente.
-- Registrar origem, horário de coleta e horário do evento ou atualização quando fornecido. Sinalizar dados ausentes, antigos ou indisponíveis.
-- Manter identificadores consistentes de estação e evento. Avaliar impactos antes de alterar nomes, tipos, chaves, granularidade e contratos entre camadas.
-- Identificar separadamente dados oficiais, relatos não verificados e eventos simulados. Simulações não podem contaminar o conjunto real.
+## 5. Dados reais e dados simulados
 
-## 5. Relatos e retroalimentação
+Cadastro real:
+- Identificador e nome da estação.
+- Ordem da estação na linha.
+- Endereço e integrações, quando confirmados.
+- Recursos de acessibilidade publicados pela fonte.
+- URL da fonte e data da consulta.
 
-Guardar na Bronze o texto necessário ao processamento, reduzindo dados pessoais ao mínimo. Na Silver, extrair estação, assunto, intenção e problema; análise de sentimento é complementar e sua biblioteca ou modelo ainda será escolhido.
+Regra de confiabilidade:
+- Recurso ausente na fonte significa “não informado”, não “inexistente”.
+- Presença de elevador não comprova funcionamento atual.
+- Integrações futuras devem ser diferenciadas das disponíveis.
+- Acessibilidade deve ser verificada para o acesso e o percurso relevantes, não resumida automaticamente a um único indicador.
+- Identificadores devem conectar cadastro, percurso e eventos.
 
-- Tratar classificações automáticas como inferências, com possibilidade de erro e revisão.
-- Não inferir deficiência, diagnóstico ou veracidade de um relato a partir do sentimento.
-- Não usar mensagens produzidas pelo próprio sistema como nova evidência de uma ocorrência.
-- No MVP, retroalimentação significa registrar e analisar interações. Relatos não substituem automaticamente informações oficiais nem alteram orientações de viagem.
+Dados simulados:
+- Usuário fictício, suas preferências e rotinas.
+- Movimento nas estações.
+- Condições operacionais.
+- Ocorrências.
+- Solicitações e confirmações de assistência.
+- Funcionários e pontos de encontro usados na demonstração.
 
-## 6. Acessibilidade e privacidade
+Dados sintéticos não devem ser apresentados como medição real da operadora.
 
-- Perguntar qual apoio é necessário na viagem, sem exigir diagnóstico para personalizar a experiência.
-- Usar linguagem simples, campos com rótulos claros e estados compreensíveis. Não comunicar situações apenas por cores ou ícones.
-- Validar os fluxos principais no celular, por teclado e com leitor de tela quando aplicável; registrar verificações ainda pendentes.
-- Não versionar credenciais, `.env`, tokens, dados pessoais reais, laudos, dumps ou datasets volumosos. Usar configurações externas e `.env.example` sem segredos.
-- Usar dados sintéticos nos testes. Restringir o acesso a textos e necessidades de assistência; S3 não deve ser público para expor esses dados à interface.
-- Não confundir identificador pseudonimizado com anonimização irreversível.
+## 6. Funcionalidades planejadas
 
-## 7. Simulação e validação
+- Conta de demonstração com usuário fictício.
+- Perfil com preferências e necessidades de acessibilidade, sem exigir diagnóstico.
+- Perguntar diretamente qual apoio é necessário.
+- Rotina com origem, destino, dias e horário habitual.
+- Minha viagem com seleção de origem e destino, consulta ao percurso e informações de acessibilidade conhecidas.
+- Condições simuladas e alertas relevantes ao usuário.
+- Solicitação de assistência com acompanhamento dos estados pendente, confirmado e concluído.
+- Responsável e ponto de encontro fictícios quando houver confirmação simulada.
+- Controles da demonstração: selecionar cenário, avançar eventos, reiniciar e limpar estado anterior.
 
-O simulador deve exercitar os mesmos contratos e fluxos de processamento usados pelas entradas reais, em ambiente separado ou explicitamente identificado.
+Priorizar, na implementação futura, transições de assistência, alertas relevantes, dados desconhecidos, prevenção de duplicidades e reinício dos cenários.
 
-Priorizar os cenários relevantes à tarefa: assistência confirmada, solicitação pendente, equipamento indisponível, fonte desatualizada ou inacessível e entradas duplicadas. Verificar persistência e impedir que uma repetição gere agendamentos duplicados.
+## 7. Acessibilidade, privacidade e validação
 
-Separar testes locais de integrações com APIs e AWS. Não criar recursos pagos ou executar operações destrutivas sem autorização. Tratar falhas com contexto, sem ocultá-las silenciosamente ou enfraquecer testes para obter sucesso.
+- Usar linguagem simples, rótulos claros e avisos que não dependam apenas de cores.
+- Não prometer assistência nem acessibilidade sem confirmação.
+- Verificar uso no celular, teclado e leitor de tela conforme aplicável, registrando o que ainda não foi validado.
+- Usar apenas perfis fictícios na demonstração.
+- Não versionar credenciais nem dados pessoais reais.
+- Testar proporcionalmente à mudança.
+- Distinguir planejado, implementado e validado.
+- Não declarar testes que não foram executados.
 
-Executar validações proporcionais à mudança. Não exigir testes de código para alterações apenas documentais. Nunca declarar validações que não foram executadas; informar bloqueios e impactos.
+## 8. Documentação
 
-## 8. Documentação e aprendizado
+- Documentação em português brasileiro.
+- Atualizar README e documentos técnicos conforme o estado real do repositório.
+- Não criar infraestrutura ou arquivos de código vazios como se fossem implementações.
+- Quando houver proposta futura, documentar como proposta e não como funcionalidade existente.
+- Explicar mudanças e limitações ao final das tarefas.
 
-- Usar português brasileiro claro, mantendo termos técnicos usuais em inglês.
-- Distinguir planejado, em desenvolvimento e implementado e validado. Arquivo existente ou placeholder não comprova funcionalidade.
-- Atualizar documentação realmente afetada. O README resume o projeto; não deve concentrar toda a documentação técnica.
-- Quando necessários, `STATUS.md` registra o estado atual, `docs/decisoes.md` registra decisões adotadas e motivos, e `CHANGELOG.md` registra marcos relevantes. Não criar esses arquivos apenas por formalidade.
-- Decisões importantes devem indicar contexto, escolha, origem da decisão, validação e limitações. Hipóteses permanecem identificadas como hipóteses.
-- Fundamentar alegações externas em fontes, preservando país, período, amostra e limites. Não atribuir à Linha 7–Rubi resultados de outros sistemas.
-- Ao concluir, explicar o que mudou, arquivos envolvidos, fluxo de entradas e saídas quando houver código, validações e pendências. A entrega deve permitir que a dupla compreenda e apresente o trabalho.
+## 9. Regras finais
 
-Uma tarefa termina quando o escopo autorizado foi atendido, as validações relevantes foram realizadas ou suas limitações informadas e a documentação afetada corresponde ao estado real. Sugerir próximos passos não autoriza executá-los.
+- A solicitação atual do autor define escopo e autonomia.
+- Trabalhar em mudanças pequenas e revisáveis.
+- Não introduzir frameworks, bancos ou cloud sem necessidade e decisão explícita.
+- Separar cadastro real, eventos simulados e estado da sessão.
+- Não prometer assistência nem acessibilidade sem confirmação.
+- Distinguir informações reais de simuladas claramente.
+- Preservar trabalho existente da dupla.
+- Não declarar conclusões que extrapolem o estado real do repositório.
+
+
