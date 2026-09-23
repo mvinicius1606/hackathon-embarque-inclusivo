@@ -1,0 +1,9 @@
+rotina_id;nome_rotina;objetivo;segunda;terca;quarta;quinta;sexta;sabado;domingo;ativa;dados_sinteticos
+ROT-001;Trabalho principal - Maria;trabalho;True;True;True;True;True;False;False;True;True
+ROT-002;Lazer fim de semana - Maria;lazer;False;False;False;False;False;True;True;True;True
+ROT-003;Estudo principal - Amanda;estudo;True;True;True;True;True;False;False;True;True
+ROT-004;Encontro e lazer - Amanda;lazer;False;False;False;False;True;True;False;True;True
+ROT-005;Visita pontual - João;compromisso_pessoal;False;False;False;False;False;True;False;True;True
+ROT-006;Trabalho de segunda a sexta - Lucas;trabalho;True;True;True;True;True;False;False;True;True
+ROT-007;Treino e encontro - Beatriz;lazer;False;False;False;True;True;True;False;True;True
+ROT-008;Consulta periódica - Rafael;compromisso_pessoal;True;False;True;False;True;False;False;True;True

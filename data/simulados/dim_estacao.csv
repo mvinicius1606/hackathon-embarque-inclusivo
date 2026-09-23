@@ -1,0 +1,18 @@
+estacao_id;nome_estacao;linha;ordem_na_linha;fonte_url;data_consulta
+EST-001;Palmeiras-Barra Funda;Linha 7-Rubi;1;https://www.tictrens.com.br/linha7-rubi;2026-01-15
+EST-002;Água Branca;Linha 7-Rubi;2;https://www.tictrens.com.br/linha7-rubi;2026-01-15
+EST-003;Lapa;Linha 7-Rubi;3;https://www.tictrens.com.br/linha7-rubi;2026-01-15
+EST-004;Piqueri;Linha 7-Rubi;4;https://www.tictrens.com.br/linha7-rubi;2026-01-15
+EST-005;Pirituba;Linha 7-Rubi;5;https://www.tictrens.com.br/linha7-rubi;2026-01-15
+EST-006;Vila Clarice;Linha 7-Rubi;6;https://www.tictrens.com.br/linha7-rubi;2026-01-15
+EST-007;Jaraguá;Linha 7-Rubi;7;https://www.tictrens.com.br/linha7-rubi;2026-01-15
+EST-008;Vila Aurora;Linha 7-Rubi;8;https://www.tictrens.com.br/linha7-rubi;2026-01-15
+EST-009;Perus;Linha 7-Rubi;9;https://www.tictrens.com.br/linha7-rubi;2026-01-15
+EST-010;Caieiras;Linha 7-Rubi;10;https://www.tictrens.com.br/linha7-rubi;2026-01-15
+EST-011;Franco da Rocha;Linha 7-Rubi;11;https://www.tictrens.com.br/linha7-rubi;2026-01-15
+EST-012;Baltazar Fidélis;Linha 7-Rubi;12;https://www.tictrens.com.br/linha7-rubi;2026-01-15
+EST-013;Francisco Morato;Linha 7-Rubi;13;https://www.tictrens.com.br/linha7-rubi;2026-01-15
+EST-014;Botujuru;Linha 7-Rubi;14;https://www.tictrens.com.br/linha7-rubi;2026-01-15
+EST-015;Campo Limpo Paulista;Linha 7-Rubi;15;https://www.tictrens.com.br/linha7-rubi;2026-01-15
+EST-016;Várzea Paulista;Linha 7-Rubi;16;https://www.tictrens.com.br/linha7-rubi;2026-01-15
+EST-017;Jundiaí;Linha 7-Rubi;17;https://www.tictrens.com.br/linha7-rubi;2026-01-15

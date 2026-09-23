@@ -1,0 +1,7 @@
+usuario_id;nome;idade_referencia;data_referencia_idade;sexo;data_nascimento;cpf;endereco_logradouro;endereco_numero;endereco_complemento;endereco_bairro;endereco_municipio;endereco_uf;endereco_cep;deficiencia_informada;usa_cadeira_rodas;preferencia_comunicacao;necessita_percurso_sem_escadas;prefere_orientacao_embarque;solicita_acompanhamento;dados_sinteticos
+USR-001;João Pereira;33;2026-01-15;masculino;1992-03-11;CPF_TESTE_001;Avenida Auro Soares de Moura Andrade;664;Condomínio Residencial Barra Funda;Barra Funda;São Paulo;SP;01156-001;visual;False;voz_alta;False;True;True;True
+USR-002;Maria Silva;27;2026-01-15;feminino;1998-09-14;CPF_TESTE_002;Rua Francisco da Cunha Menezes;1066;Apartamento 42;Vila Aurora;São Paulo;SP;04843-020;mobilidade;True;app_voz;True;True;True;True
+USR-003;Amanda Costa;15;2026-01-15;feminino;2010-07-21;CPF_TESTE_003;Avenida Santa Marina;296;Casa 02;Água Branca;São Paulo;SP;02732-040;nenhuma;False;app;False;False;False;True
+USR-004;Lucas Mendes;42;2026-01-15;masculino;1984-01-08;CPF_TESTE_004;Rua Camarões;129;Bloco C, ap 31;Pirituba;São Paulo;SP;02913-090;nenhuma;False;sms;False;False;False;True
+USR-005;Beatriz Nunes;31;2026-01-15;feminino;1994-11-17;CPF_TESTE_005;Rua Antonio Feres Sada;88;Casa A;Várzea Paulista;São Paulo;SP;13220-000;nenhuma;False;app;False;True;False;True
+USR-006;Rafael Souza;28;2026-01-15;masculino;1997-05-05;CPF_TESTE_006;Rua Felícia Pereira Pinto;215;Próximo ao terminal;Campo Limpo Paulista;São Paulo;SP;12230-000;mobilidade;False;voz_alta;True;True;True;True

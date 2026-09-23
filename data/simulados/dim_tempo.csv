@@ -1,0 +1,15 @@
+tempo_id;horario;hora;minuto;periodo_dia
+TMP-0700;07:00;7;0;manha
+TMP-0730;07:30;7;30;manha
+TMP-0800;08:00;8;0;manha
+TMP-0815;08:15;8;15;manha
+TMP-0915;09:15;9;15;manha
+TMP-0930;09:30;9;30;manha
+TMP-0945;09:45;9;45;manha
+TMP-1015;10:15;10;15;manha
+TMP-1430;14:30;14;30;tarde
+TMP-1800;18:00;18;0;tarde
+TMP-1820;18:20;18;20;tarde
+TMP-1900;19:00;19;0;noite
+TMP-1930;19:30;19;30;noite
+TMP-2000;20:00;20;0;noite
