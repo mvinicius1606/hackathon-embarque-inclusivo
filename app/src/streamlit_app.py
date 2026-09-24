@@ -9,7 +9,11 @@ import unicodedata
 
 import pandas as pd
 import streamlit as st
-import matplotlib.pyplot as plt
+try:
+    import matplotlib.pyplot as plt
+    HAS_MATPLOTLIB = True
+except Exception:
+    HAS_MATPLOTLIB = False
 
 def find_project_root():
     """Localiza data/ junto ao app ou em um dos diretórios superiores."""
@@ -332,14 +336,22 @@ def dashboard_screen():
         st.markdown("### Mapa da Linha 7–Rubi (genérico)")
         # desenhar mapa simples horizontal com estações
         estacoes = estacoes_dim["nome_estacao"].dropna().unique().tolist()
-        fig, ax = plt.subplots(figsize=(6, 1.2))
-        ax.hlines(0, 0, len(estacoes)-1, colors="#bdbdbd", linewidth=6)
-        xs = list(range(len(estacoes)))
-        ax.scatter(xs, [0]*len(xs), s=200, color="#b41763")
-        for i, e in enumerate(estacoes):
-            ax.text(i, -0.25, e, rotation=45, ha='right', fontsize=8)
-        ax.axis('off')
-        st.pyplot(fig)
+        if HAS_MATPLOTLIB:
+            fig, ax = plt.subplots(figsize=(6, 1.2))
+            ax.hlines(0, 0, max(0, len(estacoes)-1), colors="#bdbdbd", linewidth=6)
+            xs = list(range(len(estacoes)))
+            ax.scatter(xs, [0]*len(xs), s=200, color="#b41763")
+            for i, e in enumerate(estacoes):
+                # abrevia nomes longos para visualização
+                label = (e[:24] + '...') if len(e) > 24 else e
+                ax.text(i, -0.25, label, rotation=45, ha='right', fontsize=8)
+            ax.axis('off')
+            st.pyplot(fig)
+        else:
+            # fallback sem matplotlib: exibir lista horizontal simples
+            items = " — ".join([e if len(e) <= 30 else e[:27] + '...' for e in estacoes])
+            st.markdown(f"<div style='font-size:0.95rem'>{escape(items)}</div>", unsafe_allow_html=True)
+            st.info("Para uma visualização gráfica completa instale `matplotlib` (pip install matplotlib).")
         st.info("Você não tem uma rotina salva — use 'Alterar modos e rotinas' para criar uma.")
 
     # Botões principais sempre disponíveis
