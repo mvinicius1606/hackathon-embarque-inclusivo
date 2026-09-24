@@ -172,6 +172,44 @@ def phone_shell():
         st.title("Embarque Inclusivo")
 
 
+def app_sidebar():
+    """Barra lateral com navegação e ações rápidas para deixar a cara de app."""
+    logo_path = ROOT / "identidade visual" / "embarque-inclusivo-logo-horizontal.png"
+    with st.sidebar:
+        if logo_path.is_file():
+            st.image(str(logo_path), width=160)
+        else:
+            st.markdown("## Embarque Inclusivo")
+
+        user = st.session_state.get("usuario_logado")
+        if user:
+            st.markdown(f"**{escape(user.get('nome', 'Usuário'))}**")
+            if user.get("deficiencia_informada"):
+                st.markdown(f"<div style='color:#64748b'>{escape(str(user.get('deficiencia_informada')))}</div>", unsafe_allow_html=True)
+
+        nav = st.radio("Navegação", ["Início", "Minha rotina", "Minha viagem", "Perfil", "Sair"], index=0)
+        if nav == "Minha rotina":
+            st.session_state["app_phase"] = 1
+        elif nav == "Minha viagem":
+            st.session_state["app_phase"] = 2
+        elif nav == "Sair":
+            if st.button("Logout"):
+                st.session_state.clear()
+                st.experimental_rerun()
+
+        st.markdown("---")
+        if st.button("Planejar percurso"):
+            st.session_state["plan_trip"] = True
+            st.session_state["app_phase"] = 2
+            st.experimental_rerun()
+
+        if st.button("Contato com suporte"):
+            st.session_state["contact_support"] = True
+            st.toast("Contato com suporte simulado iniciado")
+
+        st.caption("Demonstração — sem autenticação real")
+
+
 def format_status(value):
     if value is None or pd.isna(value) or str(value).strip() == "":
         return "Sem dado"
@@ -517,6 +555,7 @@ def dashboard_screen():
 def main():
     st.set_page_config(page_title="Embarque Inclusivo", page_icon="🚉", layout="centered")
     phone_shell()
+    app_sidebar()
     st.caption("Demonstração — usuários, operação e atendimento simulados")
     try:
         load_data(str(DATA_DIR))
