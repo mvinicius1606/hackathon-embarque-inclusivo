@@ -9,6 +9,7 @@ import unicodedata
 
 import pandas as pd
 import streamlit as st
+import matplotlib.pyplot as plt
 
 def find_project_root():
     """Localiza data/ junto ao app ou em um dos diretórios superiores."""
@@ -143,10 +144,28 @@ def phone_shell():
             padding: 14px;
             margin-top: 10px;
         }
+        /* Identidade visual colors */
+        .brand-teal { color: #0f8b84; }
+        .brand-magenta { color: #b41763; }
         </style>
         """,
         unsafe_allow_html=True,
     )
+    # Cabeçalho com logo da identidade visual (quando disponível)
+    logo_path = ROOT / "identidade visual" / "embarque-inclusivo-logo-horizontal.png"
+    if logo_path.is_file():
+        cols = st.columns([1, 4])
+        with cols[0]:
+            st.image(str(logo_path), width=120)
+        with cols[1]:
+            st.markdown("""
+            <div style='display:flex;flex-direction:column;justify-content:center;height:100%'>
+                <div style='font-size:1.1rem;font-weight:700'>Embarque Inclusivo</div>
+                <div style='color:#64748b;font-size:0.85rem'>Demonstração — perfis e operação simulados</div>
+            </div>
+            """, unsafe_allow_html=True)
+    else:
+        st.title("Embarque Inclusivo")
 
 
 def format_status(value):
@@ -198,6 +217,7 @@ def login_signup_screen():
             cadeira_rodas = st.checkbox("Utilizo cadeira de rodas")
             sem_escadas = st.checkbox("Preciso de percurso sem escadas")
             assistencia = st.checkbox("Quero facilitar o suporte durante a viagem")
+            criar_rotina_agora = st.checkbox("Criar rotina agora?")
             enviar = st.form_submit_button("Criar conta", use_container_width=True)
 
         if enviar and nome_novo.strip():
@@ -213,7 +233,13 @@ def login_signup_screen():
                 "usuario_id": "USR-DEMO",
                 "dados_sinteticos": True,
             }
-            st.session_state["app_phase"] = 1
+            # se o usuário escolheu criar rotina agora, ir para a tela de rotina
+            if criar_rotina_agora:
+                st.session_state["app_phase"] = 1
+                st.session_state["show_rotina_after_signup"] = True
+            else:
+                # avançar para painel principal (mapa genérico se sem rotina)
+                st.session_state["app_phase"] = 2
             st.rerun()
 
 
@@ -238,6 +264,24 @@ def rotina_screen():
     )
 
     st.subheader(f"Olá, {usuario['nome']}")
+
+    # Link para alterar rotina a qualquer momento
+    st.markdown("**Ações rápidas**")
+    col_a, col_b, col_c = st.columns([1,1,1])
+    with col_a:
+        if st.button("Planejar percurso pontual"):
+            st.session_state["plan_trip"] = True
+            st.session_state["app_phase"] = 2
+            st.rerun()
+    with col_b:
+        if st.button("Contato com suporte"):
+            st.session_state["contact_support"] = True
+            st.toast("Contato com suporte simulado iniciado")
+    with col_c:
+        if st.button("Ver linha completa"):
+            st.session_state["view_line"] = True
+            st.session_state["app_phase"] = 2
+            st.rerun()
 
     with st.form("rotina_form"):
         origem = st.selectbox("Origem", estacoes, index=0)
@@ -281,6 +325,41 @@ def rotina_screen():
 def dashboard_screen():
     usuario = st.session_state["usuario_logado"]
     users, rotinas, viagens, ocorrencias, estacoes_dim, estacoes_real = load_data(str(DATA_DIR))
+
+    # Se o usuário não tiver rotina definida, mostrar mapa genérico
+    rotina = st.session_state.get("rotina", {})
+    if not rotina or rotina.get("status") == "Agora não":
+        st.markdown("### Mapa da Linha 7–Rubi (genérico)")
+        # desenhar mapa simples horizontal com estações
+        estacoes = estacoes_dim["nome_estacao"].dropna().unique().tolist()
+        fig, ax = plt.subplots(figsize=(6, 1.2))
+        ax.hlines(0, 0, len(estacoes)-1, colors="#bdbdbd", linewidth=6)
+        xs = list(range(len(estacoes)))
+        ax.scatter(xs, [0]*len(xs), s=200, color="#b41763")
+        for i, e in enumerate(estacoes):
+            ax.text(i, -0.25, e, rotation=45, ha='right', fontsize=8)
+        ax.axis('off')
+        st.pyplot(fig)
+        st.info("Você não tem uma rotina salva — use 'Alterar modos e rotinas' para criar uma.")
+
+    # Botões principais sempre disponíveis
+    st.markdown("### Controles")
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        if st.button("Planejar percurso pontual", use_container_width=True):
+            st.session_state["plan_trip"] = True
+            st.toast("Plano pontual iniciado")
+    with c2:
+        if st.button("Contato com suporte", use_container_width=True):
+            st.toast("Contato com suporte simulado")
+    with c3:
+        if st.button("Alterar modos e rotinas", use_container_width=True):
+            st.session_state["app_phase"] = 1
+            st.rerun()
+    with c4:
+        if st.button("Ver linha completa", use_container_width=True):
+            st.session_state["view_line_full"] = True
+            st.toast("Exibindo a linha completa")
 
     st.markdown(
         """
@@ -347,6 +426,15 @@ def dashboard_screen():
     rotina = st.session_state.get("rotina", {})
     origem = rotina.get("origem", "")
     destino = rotina.get("destino", "")
+    # 'Ver linha completa' só para quem tem rotina
+    if st.session_state.get("view_line") or st.session_state.get("view_line_full"):
+        if rotina and origem and destino:
+            st.success("Visualização completa da linha habilitada para usuários com rotina cadastrada.")
+        else:
+            st.warning("A visualização completa está disponível apenas para usuários com rotina cadastrada.")
+            st.session_state.pop("view_line", None)
+            st.session_state.pop("view_line_full", None)
+    
     if not origem or not destino:
         st.info("Configure uma rotina para consultar as estações do percurso.")
         if st.button("Configurar rotina"):
@@ -393,8 +481,14 @@ def dashboard_screen():
     st.markdown("### Status do apoio")
     st.caption("Controle da demonstração: simula o estado de um pedido, sem contato com a operadora.")
     request_key = f"apoio_{usuario['usuario_id']}_{origem}_{destino}_{hora_demo}"
-    status = st.radio("Estado da solicitação simulada", ["Pendente", "Confirmado", "Concluído"],
-                      horizontal=True, key=request_key)
+    # Apenas permitir suporte para usuários que indicaram necessidade de apoio
+    permite_suporte = str(usuario.get("deficiencia_informada", "")).lower() not in ["nenhuma", "", "none"] or bool(usuario.get("usa_cadeira_rodas"))
+    if not permite_suporte:
+        st.info("Suporte disponível apenas para usuários que informaram necessidade de apoio no perfil.")
+        status = st.radio("Estado da solicitação simulada", ["Sem suporte"], horizontal=True, key=request_key)
+    else:
+        status = st.radio("Estado da solicitação simulada", ["Pendente", "Confirmado", "Concluído"],
+                          horizontal=True, key=request_key)
     if status == "Confirmado":
         st.success("Confirmação simulada. Responsável fictício: João da equipe de apoio. Ponto de encontro ilustrativo: entrada principal.")
     elif status == "Pendente":
