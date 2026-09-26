@@ -24,7 +24,9 @@ Melhorar a interface e os fluxos do protótipo Streamlit para apresentar a jorna
 - Fluxos verificados com o AppTest do Streamlit: perfis, navegação, ida/volta, validação de estações, rotina da sessão e estados de apoio.
 - Geração comparada em diretório temporário: as seis tabelas reproduzem os CSVs versionados, incluindo o horário corrigido.
 - Base: 17 estações, seis usuários, oito rotinas, 16 trechos, 15 horários e 24 registros operacionais.
-- Revisão visual do app publicado em andamento. O resultado será registrado após a atualização.
+- Versão publicada na branch `main` e aberta no Streamlit em 26/09/2026.
+- Revisão no navegador desktop: entrada, identidade visual, viagem da Maria, cenário de pico com ocorrência, cadastro de estações e pedido pendente → confirmado → concluído.
+- A revisão visual em largura de celular não foi concluída: o navegador de revisão não permite abrir a prévia local utilizada para esse teste. A validação em celular real permanece pendente.
 
 ## 4. Limitações e próximo passo
 

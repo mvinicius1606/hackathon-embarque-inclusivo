@@ -4,6 +4,8 @@ Protótipo de aplicativo de mobilidade inclusiva para a Linha 7–Rubi. O projet
 
 [Abrir a demonstração](https://hackathon-embarque-inclusivo-v8jpnvffi5zdyn4btewhay.streamlit.app/)
 
+![Tela de viagem do protótipo publicado](docs/images/viagem-desktop-1790435315764.jpg)
+
 ## Sumário
 
 1. [Problema e proposta](#1-problema-e-proposta)
