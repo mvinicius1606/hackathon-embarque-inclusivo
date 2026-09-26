@@ -1,583 +1,511 @@
-"""Protótipo de demonstração. Requer os CSVs em data/ e data/simulados/.
-Execute na raiz do projeto: python -m streamlit run app/src/streamlit_app.py
-Correções: contêiner visual, localização/validação dos dados, filtros seguros
- e exibição do percurso selecionado. Não implementa autenticação real.
+"""Embarque Inclusivo: experiência de passageiro com operação e apoio simulados.
+
+Executar na raiz: python -m streamlit run app/src/streamlit_app.py
 """
+from copy import deepcopy
+from datetime import time
 from pathlib import Path
-from html import escape
-import unicodedata
+import sys
 
-import pandas as pd
+# Também funciona quando o arquivo é executado pelo AppTest do Streamlit.
+APP_DIR = Path(__file__).resolve().parent
+if str(APP_DIR) not in sys.path:
+    sys.path.insert(0, str(APP_DIR))
+
 import streamlit as st
-try:
-    import matplotlib.pyplot as plt
-    HAS_MATPLOTLIB = True
-except Exception:
-    HAS_MATPLOTLIB = False
 
-def find_project_root():
-    """Localiza data/ junto ao app ou em um dos diretórios superiores."""
-    for start in (Path(__file__).resolve().parent, Path.cwd().resolve()):
-        for candidate in (start, *start.parents):
-            if (candidate / "data" / "simulados").is_dir():
-                return candidate
-    return Path(__file__).resolve().parent
-
-
-ROOT = find_project_root()
-DATA_DIR = ROOT / "data"
-
-
-def read_csv_checked(path, required_columns):
-    if not path.is_file():
-        raise FileNotFoundError(f"Arquivo necessário não encontrado: {path}")
-    frame = pd.read_csv(path, sep=";", dtype=str, keep_default_na=False, encoding="utf-8-sig")
-    frame.columns = frame.columns.str.strip()
-    missing = set(required_columns) - set(frame.columns)
-    if missing:
-        raise ValueError(f"{path.name}: faltam as colunas {', '.join(sorted(missing))}. "
-                         "Confira também o separador ponto e vírgula (;).")
-    return frame
+from data_access import ROOT, load_data, user_routines, normalize
+from journey import (SCENARIOS, SUPPORT_OPTIONS, route_stations, scenario_for,
+                     affected_on_route, route_insights, preferred_support,
+                     create_request, transition_request)
+import ui
 
 
 @st.cache_data
-def load_data(data_dir):
-    data_dir = Path(data_dir)
-    sim_dir = data_dir / "simulados"
-    users = read_csv_checked(sim_dir / "dim_usuario.csv", ["usuario_id", "nome", "dados_sinteticos"])
-    rotinas = read_csv_checked(sim_dir / "dim_rotina.csv", ["rotina_id"])
-    viagens = read_csv_checked(sim_dir / "fato_viagem_planejada.csv", ["usuario_id", "rotina_id"])
-    ocorrencias = read_csv_checked(sim_dir / "dim_ocorrencia.csv",
-        ["hora", "status_operacao", "movimento", "impacto_usuarios", "dados_sinteticos"])
-    estacoes_dim = read_csv_checked(sim_dir / "dim_estacao.csv", ["estacao_id", "nome_estacao"])
-    estacoes_real = read_csv_checked(data_dir / "estacoes_linha7.csv", ["estacao"])
-
-    # Não usar astype(bool): a string "False" também é verdadeira em Python.
-    for frame in (users, ocorrencias):
-        frame["dados_sinteticos"] = frame["dados_sinteticos"].str.strip().str.casefold().isin(
-            ["true", "1", "sim"]
-        )
-    ocorrencias = ocorrencias.loc[ocorrencias["dados_sinteticos"]].copy()
-    ocorrencias["hora"] = pd.to_numeric(ocorrencias["hora"], errors="coerce")
-    valid_hours = ocorrencias["hora"].between(0, 23) & (ocorrencias["hora"] % 1 == 0)
-    if not valid_hours.all():
-        raise ValueError("dim_ocorrencia.csv: hora deve ser um inteiro de 0 a 23.")
-    ocorrencias["hora"] = ocorrencias["hora"].astype(int)
-    return users, rotinas, viagens, ocorrencias, estacoes_dim, estacoes_real
+def get_data():
+    return load_data()
 
 
-def normalized(value):
-    value = unicodedata.normalize("NFKD", str(value).strip().casefold())
-    return " ".join("".join(c for c in value if not unicodedata.combining(c)).split())
+def station_name(data, station_id):
+    return next(s["nome_estacao"] for s in data["stations"] if s["estacao_id"] == station_id)
 
 
-def demo_users():
-    users = load_data(str(DATA_DIR))[0]
-    return users.loc[users["dados_sinteticos"]]
+def current_routines(data):
+    routines = user_routines(data, st.session_state["user"]["usuario_id"])
+    custom = st.session_state.get("session_routine")
+    return routines + ([custom] if custom else [])
 
 
-def phone_shell():
-    st.markdown(
-        """
-        <style>
-        /* Os widgets precisam estar no contêiner real do Streamlit.
-           Uma div aberta em st.markdown não envolve os widgets seguintes. */
-        .block-container {
-            max-width: 460px;
-            margin: 3.5rem auto 1rem auto;
-            background: var(--background-color, #ffffff);
-            border-radius: 28px;
-            border: 1px solid #dfe8f3;
-            box-shadow: 0 20px 45px rgba(14, 30, 66, 0.12);
-            padding: 16px 14px 24px 14px;
-        }
-        div[data-testid="stAppViewContainer"] {
-            background: linear-gradient(180deg, #eef6ff 0%, #ffffff 35%, #f4f7fb 100%);
-        }
-        @media (max-width: 480px) {
-            .block-container { border-radius: 16px; margin-top: 3.5rem; }
-        }
-        .app-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 8px 4px 14px 4px;
-            color: #1b2440;
-        }
-        .pill {
-            display: inline-block;
-            background: #eaf2ff;
-            color: #1d4ed8;
-            border-radius: 999px;
-            padding: 5px 10px;
-            font-size: 0.72rem;
-            font-weight: 700;
-        }
-        .status-card {
-            background: linear-gradient(135deg, #e0f2fe, #f0fdf4);
-            border-radius: 20px;
-            padding: 14px;
-            border: 1px solid #d4f1e3;
-            margin-bottom: 12px;
-        }
-        .support-grid {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 10px;
-            margin-top: 10px;
-        }
-        .mini-action {
-            background: #f5f8ff;
-            border-radius: 16px;
-            padding: 12px 10px;
-            border: 1px solid #dbeafe;
-            text-align: center;
-            font-weight: 600;
-            color: #1d4ed8;
-        }
-        .big-button {
-            width: 100%;
-            border-radius: 16px;
-            min-height: 52px;
-            font-weight: 700;
-        }
-        .card {
-            border-radius: 18px;
-            background: #f9fbff;
-            border: 1px solid #e5edf8;
-            padding: 14px;
-            margin-top: 10px;
-        }
-        /* Identidade visual colors */
-        .brand-teal { color: #0f8b84; }
-        .brand-magenta { color: #b41763; }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-    # Cabeçalho com logo da identidade visual (quando disponível)
-    logo_path = ROOT / "identidade visual" / "embarque-inclusivo-logo-horizontal.png"
-    if logo_path.is_file():
-        cols = st.columns([1, 4])
-        with cols[0]:
-            st.image(str(logo_path), width=120)
-        with cols[1]:
-            st.markdown("""
-            <div style='display:flex;flex-direction:column;justify-content:center;height:100%'>
-                <div style='font-size:1.1rem;font-weight:700'>Embarque Inclusivo</div>
-                <div style='color:#64748b;font-size:0.85rem'>Demonstração — perfis e operação simulados</div>
-            </div>
-            """, unsafe_allow_html=True)
-    else:
-        st.title("Embarque Inclusivo")
+def invalidate_request(message=None):
+    if st.session_state.get("request"):
+        st.session_state["notice"] = "A viagem ou as preferências mudaram. O pedido anterior foi encerrado nesta simulação; solicite apoio novamente."
+    elif message:
+        st.session_state["notice"] = message
+    st.session_state["request"] = None
+    st.session_state.pop("support_error", None)
 
 
-def app_sidebar():
-    """Barra lateral com navegação e ações rápidas para deixar a cara de app."""
-    logo_path = ROOT / "identidade visual" / "embarque-inclusivo-logo-horizontal.png"
-    with st.sidebar:
-        if logo_path.is_file():
-            st.image(str(logo_path), width=160)
-        else:
-            st.markdown("## Embarque Inclusivo")
-
-        user = st.session_state.get("usuario_logado")
-        if user:
-            st.markdown(f"**{escape(user.get('nome', 'Usuário'))}**")
-            if user.get("deficiencia_informada"):
-                st.markdown(f"<div style='color:#64748b'>{escape(str(user.get('deficiencia_informada')))}</div>", unsafe_allow_html=True)
-
-        nav = st.radio("Navegação", ["Início", "Minha rotina", "Minha viagem", "Perfil", "Sair"], index=0)
-        if nav == "Minha rotina":
-            st.session_state["app_phase"] = 1
-        elif nav == "Minha viagem":
-            st.session_state["app_phase"] = 2
-        elif nav == "Sair":
-            if st.button("Logout"):
-                st.session_state.clear()
-                st.experimental_rerun()
-
-        st.markdown("---")
-        if st.button("Planejar percurso"):
-            st.session_state["plan_trip"] = True
-            st.session_state["app_phase"] = 2
-            st.experimental_rerun()
-
-        if st.button("Contato com suporte"):
-            st.session_state["contact_support"] = True
-            st.toast("Contato com suporte simulado iniciado")
-
-        st.caption("Demonstração — sem autenticação real")
+def start_user(user, data):
+    preferences = {k: st.session_state.get(k, False) for k in ("large_text", "high_contrast")}
+    st.session_state.clear()
+    st.session_state.update(preferences)
+    routines = user_routines(data, user["usuario_id"])
+    trip = deepcopy(routines[0]["legs"]["ida"]) if routines else {
+        "origin": data["stations"][0]["estacao_id"],
+        "destination": data["stations"][2]["estacao_id"], "departure": "10:00",
+        "name": "Viagem avulsa", "direction": "ida", "routine_id": None,
+    }
+    st.session_state.update(user=deepcopy(user), initial_user=deepcopy(user), trip=trip, page="Viagem",
+                            scenario_mode="horario", manual_hour=int(trip["departure"][:2]),
+                            request=None, request_sequence=0, trip_editor=False)
 
 
-def format_status(value):
-    if value is None or pd.isna(value) or str(value).strip() == "":
-        return "Sem dado"
-    return str(value).replace("_", " ").title()
+def reset_profile(data):
+    original = next((u for u in data["users"] if u["usuario_id"] == st.session_state["user"]["usuario_id"]),
+                    st.session_state["initial_user"])
+    start_user(original, data)
+    st.session_state["notice"] = "Demonstração reiniciada para este perfil."
 
 
-def login_signup_screen():
+def logout():
+    visual = {k: st.session_state.get(k, False) for k in ("large_text", "high_contrast")}
+    st.session_state.clear()
+    st.session_state.update(visual)
 
-    st.markdown(
-        """
-        <div class="app-header">
-            <div><strong>Embarque Inclusivo</strong><br><span style='font-size: 0.8rem; color: #64748b;'>Acesso de demonstração</span></div>
-            <span class="pill">Demo</span>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
 
-    st.caption("Acesso simulado, sem senha. Use apenas perfis fictícios.")
-    tab1, tab2 = st.tabs(["Entrar", "Cadastrar"])
-    st.caption("Perfis disponíveis: " + ", ".join(demo_users()["nome"].tolist()))
+def go(page):
+    st.session_state["page"] = page
 
-    with tab1:
-        with st.form("login_form"):
-            nome = st.text_input("Nome", key="login_nome")
-            submitted = st.form_submit_button("Entrar", use_container_width=True)
 
-        if submitted:
-            users = demo_users()
-            names = users["nome"].map(normalized)
-            typed_name = normalized(nome)
-            match = users.loc[names == typed_name]
-            if match.empty and typed_name:
-                match = users.loc[names.str.split().str[0] == typed_name]
-            if len(match) == 1:
-                st.session_state["logged_in"] = True
-                st.session_state["usuario_logado"] = match.iloc[0].to_dict()
-                st.session_state["app_phase"] = 1
-                st.rerun()
+def apply_trip(trip):
+    invalidate_request("Viagem atualizada.")
+    st.session_state["trip"] = deepcopy(trip)
+    st.session_state["scenario_mode"] = "horario"
+    st.session_state["manual_hour"] = int(trip["departure"][:2])
+    st.session_state["trip_editor"] = False
+    st.session_state["page"] = "Viagem"
+
+
+def save_trip(data):
+    state = st.session_state
+    try:
+        route_stations(data["stations"], state["edit_origin"], state["edit_destination"])
+    except ValueError as error:
+        state["trip_error"] = str(error)
+        return
+    apply_trip({"origin": state["edit_origin"], "destination": state["edit_destination"],
+                "departure": f"{state['edit_hour']:02d}:00", "name": "Viagem avulsa",
+                "direction": "ida", "routine_id": None})
+    state.pop("trip_error", None)
+
+
+def choose_routine(data):
+    routines = current_routines(data)
+    selected = next(r for r in routines if r["rotina_id"] == st.session_state["chosen_routine"])
+    direction = "ida" if st.session_state["chosen_direction"] == "Ida" else "volta"
+    apply_trip(selected["legs"][direction])
+
+
+def create_profile(data):
+    state = st.session_state
+    name = state.get("new_name", "").strip()
+    if not name:
+        state["signup_error"] = "Digite um nome fictício para continuar."
+        return
+    support = state.get("new_support", [])
+    user = {"usuario_id": "USR-DEMO", "nome": name, "deficiencia_informada": "não informada",
+            "usa_cadeira_rodas": False, "preferencia_comunicacao": "app",
+            "necessita_percurso_sem_escadas": SUPPORT_OPTIONS[2] in support,
+            "prefere_orientacao_embarque": bool(set(SUPPORT_OPTIONS[:2]) & set(support)),
+            "solicita_acompanhamento": SUPPORT_OPTIONS[3] in support, "dados_sinteticos": True}
+    start_user(user, data)
+
+
+def save_profile():
+    state = st.session_state
+    if not state["profile_name"].strip():
+        state["profile_error"] = "Informe um nome fictício."
+        return
+    user = deepcopy(state["user"])
+    user.update(nome=state["profile_name"].strip(),
+                necessita_percurso_sem_escadas=state["pref_stairs"],
+                prefere_orientacao_embarque=state["pref_orientation"],
+                solicita_acompanhamento=state["pref_accompany"],
+                usa_cadeira_rodas=state["pref_wheelchair"],
+                preferencia_comunicacao=state["pref_communication"])
+    invalidate_request("Preferências atualizadas nesta sessão.")
+    state["user"] = user
+    state.pop("profile_error", None)
+
+
+def save_routine(data):
+    state = st.session_state
+    try:
+        route_stations(data["stations"], state["routine_origin"], state["routine_destination"])
+        if not state["routine_days"]:
+            raise ValueError("Selecione pelo menos um dia da semana.")
+        if state["routine_return"] <= state["routine_departure"]:
+            raise ValueError("O retorno deve ser após a saída. Esta demonstração considera ida e volta no mesmo dia.")
+    except ValueError as error:
+        state["routine_error"] = str(error)
+        return
+    name = state["routine_purpose"]
+    base = {"name": name, "routine_id": "ROT-SESSAO", "arrival": ""}
+    outbound = {**base, "origin": state["routine_origin"], "destination": state["routine_destination"],
+                "departure": state["routine_departure"].strftime("%H:%M"), "direction": "ida"}
+    inbound = {**base, "origin": state["routine_destination"], "destination": state["routine_origin"],
+               "departure": state["routine_return"].strftime("%H:%M"), "direction": "volta"}
+    state["session_routine"] = {"rotina_id": "ROT-SESSAO", "nome_rotina": name,
+                                "days": state["routine_days"], "legs": {"ida": outbound, "volta": inbound}}
+    state.pop("routine_error", None)
+    apply_trip(outbound)
+    state["notice"] = "Rotina salva nesta sessão, com retorno no sentido inverso."
+
+
+def send_request(data):
+    state = st.session_state
+    scenario = scenario_for(data["occurrences"], state["scenario_mode"], state.get("manual_hour", 10))
+    previous = state.get("request")
+    try:
+        request = create_request(state["user"], state["trip"], scenario, state["support_types"],
+                                 state["request_sequence"] + 1, previous, state.get("support_note", ""))
+    except ValueError as error:
+        state["support_error"] = str(error)
+        return
+    if not previous or previous["id"] != request["id"]:
+        state["request_sequence"] += 1
+    state["request"] = request
+    state.pop("support_error", None)
+
+
+def advance_support(action):
+    try:
+        st.session_state["request"] = transition_request(st.session_state.get("request"), action)
+    except ValueError as error:
+        st.session_state["support_error"] = str(error)
+
+
+def login_screen(data):
+    left, right = st.columns([1.08, 1], gap="large")
+    with left:
+        ui.landing_story()
+    with right:
+        ui.section_label("Comece por uma pessoa", "EXPLORE A DEMONSTRAÇÃO")
+        st.write("Escolha um perfil fictício e veja como o app acompanha diferentes necessidades.")
+        subtitles = ["Orientação na estação · deficiência visual", "Percurso sem escadas · usa cadeira de rodas",
+                     "Viagens do dia a dia · sem deficiência informada"]
+        for index, user in enumerate(data["users"][:3]):
+            with st.container(key=f"persona_{index}"):
+                ui.persona(user, subtitles[index])
+                st.button(f"Viajar com {user['nome'].split()[0]}", key=f"login_{user['usuario_id']}",
+                          icon=":material/arrow_forward:", width="stretch",
+                          on_click=start_user, args=(user, data))
+        with st.expander("Outros perfis de demonstração"):
+            profiles = {u["usuario_id"]: u for u in data["users"][3:]}
+            selected = st.selectbox("Escolha uma pessoa", list(profiles),
+                                    format_func=lambda uid: profiles[uid]["nome"], key="extra_person")
+            st.button("Explorar este perfil", on_click=start_user, args=(profiles[selected], data), width="stretch")
+        with st.expander("Criar outro perfil fictício"):
+            st.caption("Use um nome de teste. Este perfil existe somente durante a sessão.")
+            with st.form("signup"):
+                st.text_input("Nome fictício", key="new_name", max_chars=60)
+                st.multiselect("Qual apoio ajudaria nesta viagem?", SUPPORT_OPTIONS, key="new_support")
+                st.form_submit_button("Começar minha simulação", on_click=create_profile, args=(data,),
+                                      type="primary", width="stretch")
+            if st.session_state.get("signup_error"):
+                st.error(st.session_state["signup_error"])
+
+
+def demo_controls(data, scenario):
+    with st.expander(f"Controles da apresentação · {scenario['horario']} · cenário simulado"):
+        st.caption("Use estes controles para mostrar como a mesma viagem muda ao longo do dia.")
+        st.selectbox("Cenário", list(SCENARIOS), key="scenario_mode",
+                     format_func=lambda key: f"{SCENARIOS[key]['label']} · {SCENARIOS[key]['note']}",
+                     on_change=invalidate_request)
+        if st.session_state["scenario_mode"] == "horario":
+            st.session_state.setdefault("manual_hour", 10)
+            st.slider("Hora da simulação", 0, 23, key="manual_hour", format="%02dh", on_change=invalidate_request)
+        if st.session_state["scenario_mode"] == "ocorrencia":
+            st.caption("Cena programada: a restrição de Vila Aurora, Perus e Caieiras é combinada com o pico das 7h.")
+        c1, c2 = st.columns(2)
+        c1.button("Reiniciar este perfil", icon=":material/restart_alt:", on_click=reset_profile,
+                  args=(data,), width="stretch")
+        c2.button("Trocar pessoa", icon=":material/switch_account:", on_click=logout, width="stretch")
+
+
+def navigation():
+    labels = [("Viagem", "route"), ("Estações", "train"), ("Apoio", "support_agent"), ("Perfil", "person")]
+    with st.container(key="navigation"):
+        columns = st.columns(4)
+        for column, (label, icon) in zip(columns, labels):
+            column.button(label, icon=f":material/{icon}:", key=f"nav_{label}",
+                          type="primary" if st.session_state["page"] == label else "secondary",
+                          on_click=go, args=(label,), width="stretch")
+
+
+def trip_editor(data, scenario):
+    trip = st.session_state["trip"]
+    ids = [s["estacao_id"] for s in data["stations"]]
+    with st.form("trip_form"):
+        ui.section_label("Para onde você vai?")
+        st.selectbox("Estação de origem", ids, index=ids.index(trip["origin"]), key="edit_origin",
+                     format_func=lambda sid: station_name(data, sid))
+        st.selectbox("Estação de destino", ids, index=ids.index(trip["destination"]), key="edit_destination",
+                     format_func=lambda sid: station_name(data, sid))
+        st.selectbox("Horário da viagem simulada", list(range(24)), index=scenario["hora"],
+                     format_func=lambda hour: f"{hour:02d}:00", key="edit_hour")
+        st.form_submit_button("Consultar viagem", type="primary", width="stretch", on_click=save_trip, args=(data,))
+    if st.session_state.get("trip_error"):
+        st.error(st.session_state["trip_error"])
+    st.button("Manter viagem atual", on_click=lambda: st.session_state.update(trip_editor=False), width="stretch")
+
+
+def routine_picker(data):
+    routines = current_routines(data)
+    with st.expander("Usar uma rotina de viagem"):
+        if not routines:
+            st.write("Você pode criar uma rotina na aba Perfil.")
+            st.button("Criar minha rotina", on_click=go, args=("Perfil",))
+            return
+        lookup = {r["rotina_id"]: r for r in routines}
+        with st.form("routine_picker"):
+            st.selectbox("Rotina", list(lookup), key="chosen_routine",
+                         format_func=lambda rid: lookup[rid]["nome_rotina"])
+            st.radio("Sentido da rotina", ["Ida", "Volta"], horizontal=True, key="chosen_direction")
+            st.form_submit_button("Usar esta viagem", on_click=choose_routine, args=(data,), width="stretch")
+
+
+def trip_screen(data, scenario):
+    user, trip = st.session_state["user"], st.session_state["trip"]
+    route = route_stations(data["stations"], trip["origin"], trip["destination"])
+    ui.heading("SUA VIAGEM, DO SEU JEITO", f"Olá, {user['nome'].split()[0]}.", "Vamos cuidar do próximo percurso?")
+    if st.session_state.get("trip_editor"):
+        trip_editor(data, scenario)
+        return
+    main, side = st.columns([1.55, 1], gap="medium")
+    with main:
+        ui.trip_ticket(route[0]["nome_estacao"], route[-1]["nome_estacao"], scenario, len(route))
+        st.button("Alterar viagem", icon=":material/edit_road:", key="edit_trip", width="stretch",
+                  on_click=lambda: st.session_state.update(trip_editor=True))
+        routine_picker(data)
+    with side:
+        with st.container(key="support_summary"):
+            ui.section_label("Apoio para o seu caminho", "VOCÊ ESCOLHE O QUE PRECISA")
+            request = st.session_state.get("request")
+            if request:
+                status = {"pendente": "Pedido enviado", "confirmado": "Equipe designada",
+                          "concluido": "Atendimento concluído", "cancelado": "Pedido cancelado"}[request["status"]]
+                st.write(f"**{status}**")
+                st.caption(f"{request['id']} · atendimento simulado")
+                label = "Acompanhar meu pedido"
             else:
-                st.error("Informe um nome da demonstração. Se houver nomes repetidos, use o nome completo.")
-
-    with tab2:
-        with st.form("cadastro_form"):
-            nome_novo = st.text_input("Seu nome", key="cadastro_nome")
-            necessidade = st.selectbox("Precisa de apoio principal?", ["Nenhuma", "Mobilidade", "Visual", "Auditiva", "Cognitiva"])
-            cadeira_rodas = st.checkbox("Utilizo cadeira de rodas")
-            sem_escadas = st.checkbox("Preciso de percurso sem escadas")
-            assistencia = st.checkbox("Quero facilitar o suporte durante a viagem")
-            criar_rotina_agora = st.checkbox("Criar rotina agora?")
-            enviar = st.form_submit_button("Criar conta", use_container_width=True)
-
-        if enviar and nome_novo.strip():
-            st.session_state["logged_in"] = True
-            st.session_state["usuario_logado"] = {
-                "nome": nome_novo.strip(),
-                "deficiencia_informada": necessidade,
-                "usa_cadeira_rodas": cadeira_rodas,
-                "preferencia_comunicacao": "app",
-                "necessita_percurso_sem_escadas": sem_escadas,
-                "prefere_orientacao_embarque": assistencia,
-                "solicita_acompanhamento": assistencia,
-                "usuario_id": "USR-DEMO",
-                "dados_sinteticos": True,
-            }
-            # se o usuário escolheu criar rotina agora, ir para a tela de rotina
-            if criar_rotina_agora:
-                st.session_state["app_phase"] = 1
-                st.session_state["show_rotina_after_signup"] = True
-            else:
-                # avançar para painel principal (mapa genérico se sem rotina)
-                st.session_state["app_phase"] = 2
-            st.rerun()
+                st.write("Orientação, embarque ou acompanhamento: conte qual apoio facilita a sua viagem.")
+                st.caption("Não é necessário informar um diagnóstico.")
+                label = "Solicitar apoio"
+            st.button(label, icon=":material/support_agent:", type="primary", width="stretch",
+                      on_click=go, args=("Apoio",))
+        with st.container(key="trip_actions"):
+            ui.section_label("Antes de sair")
+            st.write("Confira os recursos publicados para as estações de embarque e desembarque.")
+            st.button("Explorar estações", icon=":material/train:", width="stretch", on_click=go, args=("Estações",))
+    ui.section_label("O que considerar nesta viagem")
+    insights = route_insights(user, route, scenario)
+    if not insights:
+        ui.note("Sem ocorrência programada neste cenário",
+                "Confira a acessibilidade das estações e, se precisar, solicite orientação para o embarque.", "success")
+    for tone, title, description in insights:
+        ui.note(title, description, tone)
+    with st.expander(f"Ver percurso · {len(route)} estações"):
+        st.caption("Diagrama da ordem das estações. Não representa distâncias nem tempo de viagem.")
+        ui.route_map(route, affected_on_route(route, scenario))
 
 
-
-def rotina_screen():
-    usuario = st.session_state["usuario_logado"]
-    users, rotinas, viagens, ocorrencias, estacoes_dim, estacoes_real = load_data(str(DATA_DIR))
-    estacoes = estacoes_dim["nome_estacao"].str.strip()
-    estacoes = estacoes[estacoes.ne("")].drop_duplicates().tolist()
-    if len(estacoes) < 2:
-        st.warning("Cadastre pelo menos duas estações para escolher o percurso.")
+def stations_screen(data, scenario):
+    ui.heading("LINHA 7–RUBI", "Conheça sua estação", "Acessibilidade e informações úteis em um só lugar.")
+    search = st.text_input("Buscar estação", placeholder="Digite o nome de uma estação", key="station_search")
+    filtered = [s for s in data["stations"] if normalize(search) in normalize(s["nome_estacao"])]
+    if not filtered:
+        st.info("Nenhuma estação encontrada. Tente outra parte do nome.")
         return
+    choices = [s["estacao_id"] for s in filtered]
+    current = st.session_state.get("station_choice", st.session_state["trip"]["origin"])
+    if current not in choices:
+        st.session_state["station_choice"] = choices[0]
+    elif "station_choice" not in st.session_state:
+        st.session_state["station_choice"] = current
+    selected = st.selectbox("Estação", choices, key="station_choice", format_func=lambda sid: station_name(data, sid))
+    station = next(s for s in filtered if s["estacao_id"] == selected)
+    with st.container(key="station_details"):
+        ui.section_label(station["nome_estacao"], "CADASTRO DA ESTAÇÃO")
+        ui.resource_grid(station)
+        st.caption("Os itens publicados descrevem a estrutura cadastrada; não confirmam funcionamento atual. “Não informado” não significa inexistente.")
+        affected = affected_on_route([station], scenario)
+        if affected:
+            ui.note("Atenção nesta estação", "Há uma restrição operacional programada neste cenário. Solicite orientação antes do embarque.", "warning")
+        if scenario["closed"]:
+            ui.note("Linha fechada neste cenário", "A consulta ao cadastro continua disponível. Para viajar, escolha outro horário.", "info")
+        with st.expander("Endereço, integrações e fonte"):
+            st.write(station["recursos"].get("endereco") or "Endereço não informado no cadastro.")
+            integrations = station["recursos"].get("integracoes", "")
+            if integrations:
+                st.write("**Integrações descritas no cadastro:**")
+                st.write(integrations)
+                st.caption("A vigência das integrações não é verificada pelo protótipo. Não são usadas para sugerir trajetos fora da Linha 7.")
+            st.caption(f"Data registrada no cadastro: {station.get('data_consulta', 'não informada')}.")
+            source = station.get("fonte_url", "")
+            if source.startswith("https://www.tictrens.com.br/"):
+                st.link_button("Consultar fonte da operadora", source, icon=":material/open_in_new:")
+    with st.expander(f"Todas as estações · {len(data['stations'])}"):
+        trip = st.session_state["trip"]
+        route = route_stations(data["stations"], trip["origin"], trip["destination"])
+        ui.route_map(data["stations"], affected_on_route(data["stations"], scenario), route)
 
-    st.markdown(
-        """
-        <div class="app-header">
-            <div><strong>Minha rotina</strong><br><span style='font-size: 0.8rem; color: #64748b;'>Fase 2</span></div>
-            <span class="pill">Perfil</span>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
 
-    st.subheader(f"Olá, {usuario['nome']}")
-
-    # Link para alterar rotina a qualquer momento
-    st.markdown("**Ações rápidas**")
-    col_a, col_b, col_c = st.columns([1,1,1])
-    with col_a:
-        if st.button("Planejar percurso pontual"):
-            st.session_state["plan_trip"] = True
-            st.session_state["app_phase"] = 2
-            st.rerun()
-    with col_b:
-        if st.button("Contato com suporte"):
-            st.session_state["contact_support"] = True
-            st.toast("Contato com suporte simulado iniciado")
-    with col_c:
-        if st.button("Ver linha completa"):
-            st.session_state["view_line"] = True
-            st.session_state["app_phase"] = 2
-            st.rerun()
-
-    with st.form("rotina_form"):
-        origem = st.selectbox("Origem", estacoes, index=0)
-        destino = st.selectbox("Destino", estacoes, index=1)
-        horario = st.time_input("Horário habitual")
-        dias = st.multiselect("Dias da semana", ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"], default=["Segunda", "Quarta", "Sexta"])
-        apoio = st.checkbox("Preciso de ajuda no embarque")
-        necessidade = st.selectbox("Tipo de apoio", ["Nenhum", "Cadeira de rodas", "Orientação", "Apoio em embarque", "Agora não"])
-
-        col1, col2 = st.columns(2)
-        with col1:
-            salvar = st.form_submit_button("Salvar rotina", use_container_width=True)
-        with col2:
-            agora_nao = st.form_submit_button("Agora não", use_container_width=True)
-
-    if salvar and (origem == destino or not dias):
-        st.warning("Escolha estações diferentes e pelo menos um dia da semana.")
+def support_screen(data, scenario):
+    state = st.session_state
+    trip, user = state["trip"], state["user"]
+    ui.heading("ASSISTÊNCIA AO PASSAGEIRO", "Você não precisa planejar tudo sozinho.",
+               "Diga qual apoio ajudaria e acompanhe cada etapa do pedido.")
+    st.write(f"**{station_name(data, trip['origin'])} → {station_name(data, trip['destination'])}** · {scenario['horario']} na simulação")
+    request = state.get("request")
+    if request:
+        with st.container(key="support_card"):
+            labels = {"pendente": ("Pedido enviado · aguardando equipe", "warning"),
+                      "confirmado": ("Equipe designada · confirmação simulada", "success"),
+                      "concluido": ("Atendimento concluído na simulação", "success"),
+                      "cancelado": ("Pedido cancelado", "info")}
+            label, tone = labels[request["status"]]
+            ui.note(label, f"Protocolo {request['id']}. Este atendimento é fictício e não contata a operadora.", tone)
+            ui.support_steps(request["status"])
+            st.write("**Apoio solicitado:** " + "; ".join(request["support"]))
+            if request["note"]:
+                st.write("**Observação:**")
+                st.text(request["note"])
+            if request["status"] == "pendente":
+                st.write("Ainda não há responsável nem ponto de encontro confirmado. A próxima etapa depende da resposta da equipe.")
+            if request["staff"] and request["status"] in {"confirmado", "concluido"}:
+                st.write(f"**Quem recebe você:** {request['staff']}")
+                st.write(f"**Onde encontrar:** {request['meeting']}")
+            if request["status"] in {"pendente", "confirmado"}:
+                st.button("Cancelar pedido", on_click=advance_support, args=("cancelar",), key="cancel_request")
+        if request["status"] in {"pendente", "confirmado"}:
+            with st.expander("Apresentação · simular resposta da equipe", expanded=True):
+                st.caption("Controle do apresentador. A equipe e a confirmação são fictícias.")
+                if request["status"] == "pendente":
+                    st.button("Simular confirmação", type="primary", on_click=advance_support,
+                              args=("confirmar",), key="confirm_request", width="stretch")
+                else:
+                    st.button("Simular conclusão", type="primary", on_click=advance_support,
+                              args=("concluir",), key="finish_request", width="stretch")
+            return
+    if scenario["closed"]:
+        ui.note("Escolha outro horário para pedir apoio", "A linha está fechada neste cenário. Altere o horário em Controles da apresentação.", "warning")
         return
-
-    if salvar:
-        st.session_state["rotina"] = {
-            "origem": origem,
-            "destino": destino,
-            "horario": str(horario),
-            "dias": dias,
-            "apoio": apoio,
-            "tipo_apoio": necessidade,
-        }
-        st.session_state["app_phase"] = 2
-        st.success("Rotina salva com sucesso.")
-        st.rerun()
-
-    if agora_nao:
-        st.session_state["rotina"] = {"status": "Agora não", "origem": origem, "destino": destino}
-        st.session_state["app_phase"] = 2
-        st.info("Você pode configurar a rotina depois. A demonstração segue com o cenário atual.")
-        st.rerun()
+    ui.section_label("Qual apoio você precisa?" if not request else "Iniciar outro pedido")
+    st.caption("Todos os perfis podem pedir apoio, inclusive para uma necessidade temporária.")
+    with st.form("support_form"):
+        st.multiselect("Tipo de apoio", SUPPORT_OPTIONS, default=preferred_support(user), key="support_types")
+        st.text_area("Algo mais que a equipe deveria saber? (opcional)", key="support_note", max_chars=240,
+                     placeholder="Exemplo fictício: prefiro receber orientação por texto.")
+        st.form_submit_button("Enviar pedido simulado", type="primary", width="stretch", on_click=send_request, args=(data,))
+    if state.get("support_error"):
+        st.error(state["support_error"])
+    with st.expander("Como funciona esta demonstração?"):
+        st.write("O pedido começa pendente. O apresentador simula a resposta da equipe e, depois, a conclusão. Ao mudar o percurso, o horário ou o cenário, é preciso fazer um novo pedido.")
+        st.link_button("Orientações oficiais sobre acessibilidade", "https://www.tictrens.com.br/sua-viagem/acessibilidade")
 
 
-
-def dashboard_screen():
-    usuario = st.session_state["usuario_logado"]
-    users, rotinas, viagens, ocorrencias, estacoes_dim, estacoes_real = load_data(str(DATA_DIR))
-
-    # Se o usuário não tiver rotina definida, mostrar mapa genérico
-    rotina = st.session_state.get("rotina", {})
-    if not rotina or rotina.get("status") == "Agora não":
-        st.markdown("### Mapa da Linha 7–Rubi (genérico)")
-        # desenhar mapa simples horizontal com estações
-        estacoes = estacoes_dim["nome_estacao"].dropna().unique().tolist()
-        if HAS_MATPLOTLIB:
-            fig, ax = plt.subplots(figsize=(6, 1.2))
-            ax.hlines(0, 0, max(0, len(estacoes)-1), colors="#bdbdbd", linewidth=6)
-            xs = list(range(len(estacoes)))
-            ax.scatter(xs, [0]*len(xs), s=200, color="#b41763")
-            for i, e in enumerate(estacoes):
-                # abrevia nomes longos para visualização
-                label = (e[:24] + '...') if len(e) > 24 else e
-                ax.text(i, -0.25, label, rotation=45, ha='right', fontsize=8)
-            ax.axis('off')
-            st.pyplot(fig)
-        else:
-            # fallback sem matplotlib: exibir lista horizontal simples
-            items = " — ".join([e if len(e) <= 30 else e[:27] + '...' for e in estacoes])
-            st.markdown(f"<div style='font-size:0.95rem'>{escape(items)}</div>", unsafe_allow_html=True)
-            st.info("Para uma visualização gráfica completa instale `matplotlib` (pip install matplotlib).")
-        st.info("Você não tem uma rotina salva — use 'Alterar modos e rotinas' para criar uma.")
-
-    # Botões principais sempre disponíveis
-    st.markdown("### Controles")
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        if st.button("Planejar percurso pontual", use_container_width=True):
-            st.session_state["plan_trip"] = True
-            st.toast("Plano pontual iniciado")
-    with c2:
-        if st.button("Contato com suporte", use_container_width=True):
-            st.toast("Contato com suporte simulado")
-    with c3:
-        if st.button("Alterar modos e rotinas", use_container_width=True):
-            st.session_state["app_phase"] = 1
-            st.rerun()
-    with c4:
-        if st.button("Ver linha completa", use_container_width=True):
-            st.session_state["view_line_full"] = True
-            st.toast("Exibindo a linha completa")
-
-    st.markdown(
-        """
-        <div class="app-header">
-            <div><strong>Minha viagem</strong><br><span style='font-size: 0.8rem; color: #64748b;'>Fase 3</span></div>
-            <span class="pill">Simulação</span>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    st.subheader(f"Bem-vindo, {usuario['nome']}")
-
-    hora_demo = st.slider("Hora da simulação", 0, 23, 7)
-    if "data" in ocorrencias.columns:
-        datas = ocorrencias["data"].drop_duplicates().sort_values().tolist()
-        if len(datas) > 1:
-            data_demo = st.selectbox("Data da simulação", datas)
-            ocorrencias = ocorrencias.loc[ocorrencias["data"] == data_demo]
-    matches = ocorrencias.loc[ocorrencias["hora"] == hora_demo]
-    if matches.empty:
-        st.warning(f"Sem dados simulados para {hora_demo:02d}:00. Escolha outro horário.")
-        return
-    if len(matches) != 1:
-        st.warning("Há mais de um registro para esse horário. Confira dim_ocorrencia.csv.")
-        return
-    ocorrencia = matches.iloc[0]
-
-    st.markdown(
-        f"""
-        <div class="status-card">
-            <div style="font-size: 0.75rem; color: #475569; text-transform: uppercase; letter-spacing: 0.08em;">Situação da linha</div>
-            <div style="font-size: 1.3rem; font-weight: 800; margin-top: 6px;">{escape(format_status(ocorrencia['status_operacao']))}</div>
-            <div style="margin-top: 6px; color: #334155;">{escape(str(ocorrencia['impacto_usuarios']))}</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    cols = st.columns(2)
-    with cols[0]:
-        st.metric("Movimento", format_status(ocorrencia["movimento"]))
-    with cols[1]:
-        st.metric("Horario", f"{int(ocorrencia['hora']):02d}:00")
-
-    actions = [
-        ("🛟", "Suporte técnico"),
-        ("❓", "Ajuda"),
-        ("📅", "Agendamento"),
-        ("🤝", "Assistência"),
-    ]
-
-    action_cols = st.columns(2)
-    for idx, (icon, label) in enumerate(actions):
-        with action_cols[idx % 2]:
-            if st.button(f"{icon} {label}", key=f"action_{idx}", use_container_width=True):
-                st.session_state["action_message"] = label
-                st.toast(f"{label} acionado na demonstração.")
-
-    if "action_message" in st.session_state:
-        st.info(f"Ação ativa: {st.session_state['action_message']}")
-
-    st.markdown("### Detalhes da viagem")
-    rotina = st.session_state.get("rotina", {})
-    origem = rotina.get("origem", "")
-    destino = rotina.get("destino", "")
-    # 'Ver linha completa' só para quem tem rotina
-    if st.session_state.get("view_line") or st.session_state.get("view_line_full"):
-        if rotina and origem and destino:
-            st.success("Visualização completa da linha habilitada para usuários com rotina cadastrada.")
-        else:
-            st.warning("A visualização completa está disponível apenas para usuários com rotina cadastrada.")
-            st.session_state.pop("view_line", None)
-            st.session_state.pop("view_line_full", None)
-    
-    if not origem or not destino:
-        st.info("Configure uma rotina para consultar as estações do percurso.")
-        if st.button("Configurar rotina"):
-            st.session_state["app_phase"] = 1
-            st.rerun()
-        return
-    st.markdown(
-        f"""
-        <div class='card'>
-            <div style='font-size: 0.8rem; color: #64748b;'>Rota informada</div>
-            <div style='font-size: 1.2rem; font-weight: 700; margin-top: 6px;'>{escape(origem)} → {escape(destino)}</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    if rotina.get("horario"):
-        st.write("Horário habitual: " + rotina["horario"][:5])
-    else:
-        st.caption("Consulta avulsa; rotina ainda não salva.")
-
-    st.markdown("### Acessibilidade da estação")
-    st.caption("Cadastro estático: os itens abaixo não confirmam funcionamento atual.")
-    stations = estacoes_real["estacao"].map(normalized)
-    origem_rows = estacoes_real.loc[stations == normalized(origem)]
-    destino_rows = estacoes_real.loc[stations == normalized(destino)]
-    estacao_origem = origem_rows.iloc[0] if len(origem_rows) == 1 else None
-    estacao_destino = destino_rows.iloc[0] if len(destino_rows) == 1 else None
-
-    for label, estacao in [("Origem", estacao_origem), ("Destino", estacao_destino)]:
-        if estacao is None:
-            st.warning(f"{label}: cadastro ausente ou ambíguo para esta estação.")
-            continue
-        st.write(f"{label}: {estacao['estacao']}")
-        st.json(
-            {
-                "elevador": estacao.get("elevador"),
-                "rampa": estacao.get("rampa"),
-                "piso_tatil": estacao.get("piso_tatil"),
-                "banheiro_acessivel_unissex": estacao.get("banheiro_acessivel_unissex"),
-                "transposicao_de_plataformas": estacao.get("transposicao_de_plataformas"),
-            }
-        )
-
-    st.markdown("### Status do apoio")
-    st.caption("Controle da demonstração: simula o estado de um pedido, sem contato com a operadora.")
-    request_key = f"apoio_{usuario['usuario_id']}_{origem}_{destino}_{hora_demo}"
-    # Apenas permitir suporte para usuários que indicaram necessidade de apoio
-    permite_suporte = str(usuario.get("deficiencia_informada", "")).lower() not in ["nenhuma", "", "none"] or bool(usuario.get("usa_cadeira_rodas"))
-    if not permite_suporte:
-        st.info("Suporte disponível apenas para usuários que informaram necessidade de apoio no perfil.")
-        status = st.radio("Estado da solicitação simulada", ["Sem suporte"], horizontal=True, key=request_key)
-    else:
-        status = st.radio("Estado da solicitação simulada", ["Pendente", "Confirmado", "Concluído"],
-                          horizontal=True, key=request_key)
-    if status == "Confirmado":
-        st.success("Confirmação simulada. Responsável fictício: João da equipe de apoio. Ponto de encontro ilustrativo: entrada principal.")
-    elif status == "Pendente":
-        st.warning("Solicitação em análise. Aguarde confirmação da equipe de suporte.")
-    else:
-        st.info("Suporte concluído e acompanhamento encerrado para esta viagem.")
-
-    if st.button("Logout", use_container_width=True):
-        st.session_state.clear()
-        st.rerun()
-
+def profile_screen(data):
+    user = st.session_state["user"]
+    ui.heading("PREFERÊNCIAS E ROTINA", "Um app que acompanha você.", "Escolha o apoio que faz sentido para a sua viagem.")
+    prefs, routines_tab, display = st.tabs(["Meu apoio", "Minha rotina", "Leitura"])
+    with prefs:
+        st.caption("Perfil fictício. As alterações valem apenas nesta sessão; não exigimos diagnóstico.")
+        with st.form("profile_form"):
+            st.text_input("Nome fictício", value=user["nome"], key="profile_name", max_chars=60)
+            st.checkbox("Prefiro um percurso sem escadas", value=user.get("necessita_percurso_sem_escadas", False), key="pref_stairs")
+            st.checkbox("Quero orientação no embarque", value=user.get("prefere_orientacao_embarque", False), key="pref_orientation")
+            st.checkbox("Quero acompanhamento na estação", value=user.get("solicita_acompanhamento", False), key="pref_accompany")
+            st.checkbox("Utilizo cadeira de rodas", value=user.get("usa_cadeira_rodas", False), key="pref_wheelchair")
+            options = ["app", "voz_alta", "app_voz", "sms"]
+            labels = {"app": "Texto no aplicativo", "voz_alta": "Orientação falada pela equipe", "app_voz": "Texto e orientação falada", "sms": "Mensagem de texto"}
+            value = user.get("preferencia_comunicacao", "app")
+            st.selectbox("Como prefere se comunicar com a equipe?", options, index=options.index(value) if value in options else 0,
+                         format_func=lambda v: labels[v], key="pref_communication")
+            st.caption("A preferência é registrada para a simulação; o protótipo não envia mensagens nem gera áudio.")
+            st.form_submit_button("Salvar preferências", type="primary", on_click=save_profile, width="stretch")
+        if st.session_state.get("profile_error"):
+            st.error(st.session_state["profile_error"])
+    with routines_tab:
+        routines = current_routines(data)
+        for routine in routines:
+            ida, volta = routine["legs"]["ida"], routine["legs"]["volta"]
+            with st.container(border=True):
+                st.write(f"**{routine['nome_rotina']}**")
+                st.write(f"{station_name(data, ida['origin'])} → {station_name(data, ida['destination'])}")
+                st.caption(f"{' · '.join(routine['days'])} | Ida {ida['departure']} | Volta {volta['departure']}")
+                st.button("Usar ida", key=f"out_{routine['rotina_id']}", on_click=apply_trip, args=(ida,))
+                st.button("Usar retorno", key=f"back_{routine['rotina_id']}", on_click=apply_trip, args=(volta,))
+        with st.expander("Criar ou editar minha rotina da sessão", expanded=not bool(routines)):
+            ids = [s["estacao_id"] for s in data["stations"]]
+            trip = st.session_state["trip"]
+            custom = st.session_state.get("session_routine")
+            base = custom["legs"]["ida"] if custom else trip
+            with st.form("routine_form"):
+                st.selectbox("Objetivo", ["Trabalho", "Estudo", "Saúde", "Lazer", "Outro"], key="routine_purpose")
+                st.selectbox("Origem habitual", ids, index=ids.index(base["origin"]), key="routine_origin", format_func=lambda sid: station_name(data, sid))
+                st.selectbox("Destino habitual", ids, index=ids.index(base["destination"]), key="routine_destination", format_func=lambda sid: station_name(data, sid))
+                st.multiselect("Dias da semana", ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"],
+                               default=custom["days"] if custom else ["Seg", "Ter", "Qua", "Qui", "Sex"], key="routine_days")
+                st.time_input("Saída de ida", value=time.fromisoformat(base["departure"]), key="routine_departure")
+                st.time_input("Saída de retorno", value=time.fromisoformat(custom["legs"]["volta"]["departure"]) if custom else time(18, 0), key="routine_return")
+                st.caption("O retorno usa o percurso inverso. Seus horários são preferências; não são previsão de chegada do trem.")
+                st.form_submit_button("Salvar rotina da sessão", type="primary", on_click=save_routine, args=(data,), width="stretch")
+            if st.session_state.get("routine_error"):
+                st.error(st.session_state["routine_error"])
+    with display:
+        st.toggle("Texto ampliado", key="large_text")
+        st.toggle("Mais contraste", key="high_contrast")
+        st.caption("As informações usam texto além das cores. Você também pode navegar com Tab e ativar os controles com Enter ou Espaço.")
+    st.button("Trocar pessoa da demonstração", icon=":material/logout:", on_click=logout, width="stretch")
 
 
 def main():
-    st.set_page_config(page_title="Embarque Inclusivo", page_icon="🚉", layout="centered")
-    phone_shell()
-    app_sidebar()
-    st.caption("Demonstração — usuários, operação e atendimento simulados")
+    st.set_page_config(page_title="Embarque Inclusivo · Sua viagem", layout="wide",
+                       page_icon=str(ROOT / "identidade visual" / "embarque-inclusivo-simbolo-negativo.png"),
+                       initial_sidebar_state="collapsed")
+    # Reatribuir preserva as preferências mesmo nas páginas sem esses widgets.
+    # O Streamlit remove automaticamente o estado de widgets que deixam de aparecer.
+    for key in ("large_text", "high_contrast"):
+        st.session_state[key] = st.session_state.get(key, False)
+    st.session_state["manual_hour"] = st.session_state.get("manual_hour", 10)
+    ui.style(st.session_state["large_text"], st.session_state["high_contrast"])
+    ui.brand_header()
     try:
-        load_data(str(DATA_DIR))
-    except (OSError, ValueError, pd.errors.ParserError) as error:
-        st.error(f"Não foi possível carregar os dados: {error}")
-        st.info("Execute este arquivo dentro do repositório, mantendo a pasta data/ e os CSVs originais.")
-        st.code("python -m streamlit run app/src/streamlit_app.py", language="bash")
+        data = get_data()
+    except (OSError, ValueError) as error:
+        st.error("Não foi possível carregar a demonstração. Confira os arquivos de dados do projeto.")
+        with st.expander("Detalhes para manutenção"):
+            st.text(str(error))
         st.stop()
-
-    if "logged_in" not in st.session_state:
-        st.session_state["logged_in"] = False
-    if "app_phase" not in st.session_state:
-        st.session_state["app_phase"] = 0
-
-    if not st.session_state["logged_in"]:
-        login_signup_screen()
-    elif st.session_state["app_phase"] == 0:
-        login_signup_screen()
-    elif st.session_state["app_phase"] == 1:
-        rotina_screen()
+    if not st.session_state.get("user"):
+        login_screen(data)
     else:
-        dashboard_screen()
+        scenario = scenario_for(data["occurrences"], st.session_state["scenario_mode"], st.session_state.get("manual_hour", 10))
+        demo_controls(data, scenario)
+        navigation()
+        if st.session_state.get("notice"):
+            st.info(st.session_state.pop("notice"))
+        page = st.session_state["page"]
+        if page == "Viagem":
+            trip_screen(data, scenario)
+        elif page == "Estações":
+            stations_screen(data, scenario)
+        elif page == "Apoio":
+            support_screen(data, scenario)
+        elif page == "Perfil":
+            profile_screen(data)
+    ui.footer()
 
 
 if __name__ == "__main__":

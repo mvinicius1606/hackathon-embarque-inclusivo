@@ -1,36 +1,37 @@
 # Status do projeto
 
-## Objetivo atual
+Atualização: 26/09/2026.
 
-Esta etapa implementa a massa inicial de dados sintéticos para usuários, rotinas e viagens planejadas da Linha 7–Rubi, preservando o cadastro real de estações em [data/estacoes_linha7.csv](data/estacoes_linha7.csv) e separando as entidades artificiais em [data/simulados](data/simulados).
+## 1. Objetivo atual
 
-## Planejado
+Melhorar a interface e os fluxos do protótipo Streamlit para apresentar a jornada inclusiva na Linha 7–Rubi. O escopo permanece em cadastro estático, cenários artificiais e assistência simulada, sem infraestrutura adicional.
 
-- Modelagem dimensional simples em estrela para o MVP.
-- Dados de três usuários fictícios e cinco rotinas de viagem.
-- Registro de premissas e do processo de geração em [docs/dados-simulados.md](docs/dados-simulados.md).
+## 2. Implementado
 
-## Em andamento
+- Nova interface com identidade visual da equipe, navegação Viagem/Estações/Apoio/Perfil e organização responsiva.
+- Entrada por seis usuários fictícios, rotinas existentes com ida/volta e criação de perfil e rotina temporários.
+- Busca de estações, diagrama do percurso, recursos publicados e informação desconhecida explícita.
+- Quatro cenários selecionáveis, exploração das 24 horas e avisos conforme percurso e necessidades.
+- Assistência pendente, confirmada, concluída ou cancelada, com prevenção de duplicidade e reinício ao mudar o contexto.
+- Preferências de leitura preservadas durante a navegação.
+- Separação entre dados (`data_access.py`), regras (`journey.py`), telas e apresentação (`ui.py`/`style.css`).
+- Correção de `TMP-1830`, referenciado por uma viagem e ausente em `dim_tempo.csv`, também no gerador.
+- README, metadados dos dados e roteiro atualizados para refletir o app existente.
 
-- Validação de consistência entre tabelas e horários.
+## 3. Validação
 
-## Implementado
+- 11 testes automatizados aprovados com Python 3.12 e Streamlit 1.64.0.
+- Fluxos verificados com o AppTest do Streamlit: perfis, navegação, ida/volta, validação de estações, rotina da sessão e estados de apoio.
+- Geração comparada em diretório temporário: as seis tabelas reproduzem os CSVs versionados, incluindo o horário corrigido.
+- Base: 17 estações, seis usuários, oito rotinas, 16 trechos, 15 horários e 24 registros operacionais.
+- Revisão visual do app publicado em andamento. O resultado será registrado após a atualização.
 
-- Script reprodutível em [data/simulados/generate_dados_sinteticos.py](data/simulados/generate_dados_sinteticos.py).
-- CSVs gerados em [data/simulados](data/simulados): dim_estacao.csv, dim_usuario.csv, dim_tempo.csv, dim_rotina.csv, dim_ocorrencia.csv e fato_viagem_planejada.csv.
-- Expansão para 6 usuários fictícios, com 3 perfis novos em horários distintos e um usuário adicional com deficiência informada.
-- Cenário operacional de 24 horas para a segunda-feira, 2026-09-01, com registros de 1 em 1 hora.
+## 4. Limitações e próximo passo
 
-## Validado
+- O app não possui autenticação, persistência permanente, dados operacionais ao vivo ou integração com a operadora.
+- A idade usa referência fixa de 15/01/2026. O dia operacional de exemplo é 01/09/2026, uma terça-feira.
+- Durações artificiais e integrações do cadastro não são usadas como previsões ou rotas alternativas verificadas.
+- Recursos de leitura não equivalem a auditoria de acessibilidade concluída.
+- Próximo passo recomendado: validar a compreensão da jornada com usuários PCD e representantes da operação. Isso depende de uma nova tarefa.
 
-- 6 usuários, 8 rotinas, 16 trechos planejados e 24 ocorrências horárias.
-- Chaves primárias e estrangeiras consistentes.
-- Idades coerentes com data de referência fixa.
-- CPFs sintéticos e claramente fictícios.
-- Retorno invertido em relação à ida e horários plausíveis.
-- Linha em funcionamento real contemplado: fechado fora do horário oficial e operação normal/pico/queda de energia simulada nas faixas pertinentes.
-
-## Pendências
-
-- Simulador operacional e interface ainda não implementados.
-- Futuras ocorrências e cenários operacionais serão adicionados em etapa posterior.
+Premissas e estrutura dos dados: [docs/dados-simulados.md](docs/dados-simulados.md). Roteiro: [apresetacao/roteiro_demo.md](apresetacao/roteiro_demo.md).

@@ -226,6 +226,7 @@ def build_tempo() -> list[dict]:
         {"tempo_id": "TMP-1430", "horario": "14:30", "hora": 14, "minuto": 30, "periodo_dia": "tarde"},
         {"tempo_id": "TMP-1800", "horario": "18:00", "hora": 18, "minuto": 0, "periodo_dia": "tarde"},
         {"tempo_id": "TMP-1820", "horario": "18:20", "hora": 18, "minuto": 20, "periodo_dia": "tarde"},
+        {"tempo_id": "TMP-1830", "horario": "18:30", "hora": 18, "minuto": 30, "periodo_dia": "tarde"},
         {"tempo_id": "TMP-1900", "horario": "19:00", "hora": 19, "minuto": 0, "periodo_dia": "noite"},
         {"tempo_id": "TMP-1930", "horario": "19:30", "hora": 19, "minuto": 30, "periodo_dia": "noite"},
         {"tempo_id": "TMP-2000", "horario": "20:00", "hora": 20, "minuto": 0, "periodo_dia": "noite"},
@@ -746,7 +747,13 @@ def validate_data() -> None:
     assert len({r["rotina_id"] for r in rows}) == 8
 
     valid_stations = {item["estacao_id"] for item in estacoes}
+    valid_times = {item["tempo_id"] for item in tempo}
+    valid_routines = {item["rotina_id"] for item in rotinas}
     for row in rows:
+        assert row["usuario_id"] in user_ids
+        assert row["rotina_id"] in valid_routines
+        assert row["tempo_saida_id"] in valid_times
+        assert row["tempo_chegada_id"] in valid_times
         assert row["estacao_origem_id"] in valid_stations
         assert row["estacao_destino_id"] in valid_stations
         assert row["estacao_origem_id"] != row["estacao_destino_id"]

@@ -1,158 +1,101 @@
-# hackathon-embarque-inclusivo
+# Embarque Inclusivo
 
-## Visão geral
+Protótipo de aplicativo de mobilidade inclusiva para a Linha 7–Rubi. O projeto reúne informações sobre estações, rotinas do passageiro e pedidos de apoio, com atenção às pessoas com deficiência ou mobilidade reduzida.
 
-Este repositório documenta um MVP de aplicativo de mobilidade inclusiva para a Linha 7–Rubi, em São Paulo, pensado para apresentação em hackathon e como material de portfólio.
+[Abrir a demonstração](https://hackathon-embarque-inclusivo-v8jpnvffi5zdyn4btewhay.streamlit.app/)
 
-O objetivo do projeto é facilitar a viagem de pessoas que precisam de apoio, ajudando a relacionar informações de acessibilidade com as condições reais do percurso e com necessidades específicas da pessoa. A proposta não assume parceria com a operadora nem promete atendimento real ou percurso garantido.
+## Sumário
 
-## Estado real do repositório
+1. [Problema e proposta](#1-problema-e-proposta)
+2. [Funcionalidades implementadas](#2-funcionalidades-implementadas)
+3. [Como executar](#3-como-executar)
+4. [Cenários de apresentação](#4-cenários-de-apresentação)
+5. [Dados e arquitetura](#5-dados-e-arquitetura)
+6. [Limites da demonstração](#6-limites-da-demonstração)
+7. [Verificação e apresentação](#7-verificação-e-apresentação)
 
-O repositório ainda está em fase de documentação e planejamento. Não há implementação do protótipo, nem infraestrutura, nem dados persistentes configurados.
+## 1. Problema e proposta
 
-O único arquivo de código presente é [ingestao-bronze/src/api.py](ingestao-bronze/src/api.py), que se configura como um placeholder de uma proposta anterior e não deve ser interpretado como funcionalidade atual do MVP.
+Informações dispersas sobre acessibilidade e assistência dificultam o planejamento da viagem e aumentam a dependência de terceiros. O Embarque Inclusivo relaciona o percurso às necessidades de cada pessoa e torna as etapas de um pedido de apoio mais claras.
 
-## Problema a ser mostrado
+A proposta de negócio é B2B, voltada a operadoras de trens e metrôs. A Linha 7–Rubi é o recorte da demonstração; não há parceria ou integração confirmada com a TIC Trens. O MVP serve para validar a experiência no hackathon e no projeto de extensão, além de compor o portfólio da equipe.
 
-As pessoas que viajam por transporte público muitas vezes encontram dificuldade para responder perguntas simples e essenciais:
+## 2. Funcionalidades implementadas
 
-- qual estação oferece acessibilidade relevante para o meu caso;
-- o percurso tem algum ponto problemático;
-- o equipamento necessário está disponível;
-- como solicitar apoio durante a viagem;
-- qual é o estado real da assistência solicitada.
+- **Entrada:** escolha entre seis pessoas fictícias ou crie um perfil temporário, sem senha ou diagnóstico.
+- **Viagem:** consulte a rotina cadastrada, altere origem e destino, escolha ida ou retorno e explore o percurso.
+- **Estações:** busque uma das 17 estações e consulte recursos publicados, endereço e fonte.
+- **Apoio:** solicite assistência e simule confirmação, conclusão ou cancelamento.
+- **Perfil:** ajuste necessidades, preferência de comunicação, rotina, tamanho do texto e contraste.
+- **Apresentação:** alterne quatro cenários, explore as 24 horas e reinicie a demonstração.
 
-O MVP tem como diferencial explicar por que uma condição do percurso afeta a viagem de uma pessoa específica, e não apenas apresentar um resumo genérico de acessibilidade.
+A identidade visual utiliza as logos originais da equipe, com verde petróleo, rubi, coral e fundo claro. A interface adapta as colunas a telas menores e mantém controles nativos do Streamlit, foco visível e mensagens com texto além das cores.
 
-## Solução proposta
+## 3. Como executar
 
-A solução é um protótipo em Streamlit para celular, com jornada guiada de usuário fictício. O app reúne:
+Recomendado: Python 3.12 ou superior. Na raiz do repositório:
 
-- informações de acessibilidade conhecidas das estações;
-- o perfil e as necessidades do usuário;
-- a rotina habitual de deslocamento;
-- o percurso selecionado;
-- condições operacionais simuladas e alertas relevantes;
-- a solicitação de assistência e o acompanhamento do estado.
-
-A experiência é pensada para demonstrar a decisão do usuário em cenas diferentes, sem afirmar que o atendimento foi confirmado por uma operadora real.
-
-## Funcionalidades planejadas
-
-### Entrada e perfil
-
-- Conta de demonstração com usuário fictício.
-- Identificação clara de que não há autenticação real.
-- Preferências e necessidades de acessibilidade.
-- Informação sobre deficiência opcional, editável e sem exigência de diagnóstico.
-- Pergunta direta sobre o apoio necessário durante a viagem.
-- Suporte também para necessidades temporárias.
-
-### Rotina e viagem
-
-- Origem, destino, dias e horário habitual.
-- Possibilidade de selecionar ou alterar a rotina.
-- Consulta ao percurso e à acessibilidade conhecidas.
-- Condições simuladas e alertas relevantes.
-- Alternativas somente quando verificadas.
-- Limitação explicitada quando não houver alternativa confirmada.
-
-### Assistência
-
-- Solicitar apoio.
-- Acompanhar estados como pendente, confirmado e concluído.
-- Mostrar responsável e ponto de encontro fictícios quando houver confirmação simulada.
-- Evitar pedidos duplicados por repetição de clique ou atualização da interface.
-
-### Controles da demonstração
-
-- Selecionar cenário.
-- Avançar eventos.
-- Reiniciar a demonstração.
-- Manter esses controles separados da jornada do passageiro.
-
-## Arquitetura simplificada
-
-A estrutura abaixo é uma proposta para implementação futura e não representa código já implementado.
-
-```text
-app.py
-requirements.txt
-dados/
-    estacoes.json
-    usuario_demo.json
-    cenarios.json
-src/
-    dados.py
-    simulacao.py
-    viagem.py
-    assistencia.py
-    telas/
-        entrada.py
-        perfil.py
-        inicio.py
-        viagem.py
-docs/
-    roteiro_demo.md
+```bash
+python -m venv .venv
 ```
 
-Responsabilidades previstas:
+Ative o ambiente virtual no seu sistema operacional. Depois:
 
-- app.py: início e navegação.
-- dados.py: carregamento e validação dos arquivos.
-- simulacao.py: cenários, avanço de eventos e reinício.
-- viagem.py: percurso e impacto das condições nas necessidades do usuário.
-- assistencia.py: estados e transições do atendimento.
-- telas/: apresentação e interação, sem concentrar regras de negócio.
+```bash
+python -m pip install -r requirements.txt
+python -m streamlit run app/src/streamlit_app.py
+```
 
-## Dados reais e simulados
+No Streamlit Community Cloud, configure `app/src/streamlit_app.py` como arquivo principal na branch `main`. Os CSVs e as imagens já estão no repositório; não são necessárias credenciais.
 
-### Dados reais
+## 4. Cenários de apresentação
 
-- Identificador e nome da estação.
-- Ordem da estação na linha.
-- Endereço e integrações, quando confirmados.
-- Recursos de acessibilidade publicados pela fonte.
-- URL da fonte e data da consulta.
+| Cenário | Hora simulada | Comportamento |
+|---|---|---|
+| Viagem tranquila | 10h | Baixo movimento, sem ocorrência programada. |
+| Movimento moderado | 14h | Movimento moderado, sem ocorrência programada. |
+| Horário de pico | 7h | Movimento alto e orientação conforme as preferências. |
+| Pico com ocorrência | 7h | Movimento alto e restrição em Vila Aurora, Perus e Caieiras. |
 
-Esses dados devem ser tratados como cadastro estático real e não devem ser inventados nesta tarefa.
+O último cenário combina a ocorrência sintética cadastrada às 13h com o pico das 7h, sem alterar o CSV original. Assim, é possível comparar a mesma viagem com e sem ocorrência. O aviso indica se o trecho afetado pertence ao percurso selecionado.
 
-### Dados simulados
+**Escolher horário** usa diretamente os 24 registros horários. Na entrada, o app usa a hora de saída da rotina; os minutos são agrupados na respectiva hora da simulação. Os horários e níveis de movimento não representam monitoramento real.
 
-- Usuário fictício e suas preferências.
-- Movimento nas estações.
-- Condições operacionais.
-- Ocorrências.
-- Solicitações e confirmações de assistência.
-- Funcionários e pontos de encontro usados na demonstração.
+## 5. Dados e arquitetura
 
-O aplicativo deve distinguir claramente entre informações reais e simulações, sem atribuir dados sintéticos à operadora como se fossem medições reais.
+| Arquivo | Responsabilidade |
+|---|---|
+| `app/src/streamlit_app.py` | Telas, navegação, formulários e estado da sessão. |
+| `app/src/data_access.py` | Leitura dos CSVs e ligação entre usuários, rotinas e viagens. |
+| `app/src/journey.py` | Percursos, cenários e transições da assistência. |
+| `app/src/ui.py` e `style.css` | Componentes visuais e estilos. |
+| `.streamlit/config.toml` | Tema nativo do Streamlit. |
+| `data/estacoes_linha7.csv` | Cadastro estático de referência. |
+| `data/simulados/` | Seis usuários, oito rotinas, 16 trechos e 24 registros operacionais sintéticos. |
 
-## Quatro cenários do MVP
+O MVP utiliza Python, Streamlit, pandas, CSV e memória da sessão. Não exige arquitetura medallion, API, banco remoto ou autenticação. Perfil editado, rotina adicional e pedidos não alteram os arquivos: são descartados ao trocar a pessoa, reiniciar ou encerrar a sessão.
 
-Os cenários abaixo usam horários ilustrativos para a demonstração e não representam medição real de demanda da Linha 7.
+Detalhes de origem, campos, relações e geração estão em [docs/dados-simulados.md](docs/dados-simulados.md).
 
-1. Baixo movimento: 22h, sem ocorrências.
-2. Movimento moderado: 14h, sem ocorrências.
-3. Horário de pico: 7h30, movimento intenso, sem ocorrências.
-4. Horário de pico com ocorrência: 7h30, movimento intenso e uma ocorrência programada.
+## 6. Limites da demonstração
 
-O horário não determina sozinho a existência de uma ocorrência. Os dois cenários de pico usam o mesmo horário para demonstrar o efeito do problema.
+- Nenhum pedido é enviado à operadora. Responsável e ponto de encontro são fictícios e só aparecem depois da confirmação simulada.
+- Um pedido pendente não equivale a atendimento confirmado. Mudar percurso, cenário, hora ou preferências encerra o pedido anterior na sessão.
+- Um recurso publicado não confirma funcionamento atual. Ausência de informação é exibida como **não informado**.
+- Integrações do cadastro não são verificadas em tempo real nem usadas para recomendar caminhos fora da Linha 7.
+- Não há previsão de chegada, garantia de percurso acessível, comunicação por voz/SMS ou acompanhamento real da viagem.
+- A acessibilidade ainda precisa ser validada com pessoas com deficiência, leitores de tela e diferentes celulares.
 
-No cenário 4, uma indisponibilidade simulada de elevador pode afetar um acesso necessário à viagem do usuário. O aplicativo explica esse impacto e permite solicitar orientação. Só oferece alternativa de percurso se houver uma verificada.
+## 7. Verificação e apresentação
 
-## Regras e limitações atuais
+```bash
+python -m unittest discover -s tests -v
+```
 
-- O protótipo usa login e assistência simulados.
-- Não há autenticação real, nem coleta de senhas.
-- Não há persistência permanente na primeira versão.
-- Não há integração com a operadora e não há promessa de atendimento real.
-- Dados ausentes na fonte são tratados como “não informado”, não como “inexistente”.
-- Acessibilidade deve ser avaliada em relação ao percurso e ao apoio necessário.
-- Novas funcionalidades só entram por decisão explícita.
+Os testes verificam percursos, cenários, chaves de horários, assistência e navegação com o AppTest do Streamlit. Para reproduzir a base sintética, execute `python data/simulados/generate_dados_sinteticos.py`; esse comando regrava os CSVs sintéticos.
 
-## Estado do projeto
+- [Roteiro da demonstração](apresetacao/roteiro_demo.md)
+- [Situação atual e verificações](STATUS.md)
+- [Regras do projeto](AGENTS.md)
 
-Este projeto está em fase de planejamento e documentação para apresentação em hackathon. O documento de roteiro de demonstração em [docs/roteiro_demo.md](docs/roteiro_demo.md) detalha a jornada, os cenários e os critérios de prontidão.
-
-A implementação do MVP ainda não foi iniciada, e o trabalho documental deve continuar confirmando o escopo e evitando promessas que extrapolam o estado real do repositório.
+Referências de experiência consultadas: [TfL Go](https://tfl.gov.uk/maps_/tfl-go), pela consulta da jornada, e [Passenger Assistance](https://passengerassistance.com/), pelas preferências e acompanhamento da assistência. São inspirações de organização da experiência, sem reprodução de marca ou integração com esses serviços.
