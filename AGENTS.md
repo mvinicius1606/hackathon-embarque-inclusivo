@@ -5,30 +5,34 @@
 - A solicitação atual do autor define o escopo, a autonomia e os entregáveis.
 - Trabalhar em mudanças pequenas e revisáveis.
 - Ler o estado real do repositório antes de editar qualquer documentação ou implementação.
-- Esse projeto é um trabalho em grupo mas apenas eu trabalhara nesse repositório.
+- Este é um trabalho acadêmico em grupo, com execução técnica e documental sob responsabilidade de Marcos Vinicius Vieira dos Santos. Preservar os créditos individuais registrados no README.
 - Não transformar sugestões ou ideias em requisitos obrigatórios sem autorização explícita.
 - Não iniciar etapas adicionais sem autorização.
 
-## 3. Objetivo do projeto
+## 2. Contexto e estado do projeto
 
-Nome: hackathon-embarque-inclusivo.
+Nome: Embarque Inclusivo. Repositório: hackathon-embarque-inclusivo.
+
+Estado: projeto acadêmico concluído, desenvolvido no contexto do Hacktown, voltado ao empreendedorismo, por três estudantes da Universidade Presbiteriana Mackenzie. Equipe, cursos e contribuições estão descritos no README.
+
+O projeto foi classificado para a segunda fase com nota 7,4, mas dificuldades logísticas impediram a participação na apresentação presencial. Preservar esse resultado sem descrevê-lo como premiação ou apresentação realizada.
 
 Recorte: Linha 7–Rubi, em São Paulo.
 
 Proposta: um protótipo de aplicativo para mobilidade inclusiva que reúne informações de acessibilidade, considera necessidades e rotinas do passageiro e facilita a solicitação de assistência durante a viagem.
 
-O foco do hackathon é demonstrar a jornada de um usuário fictício em diferentes situações e mostrar como o aplicativo reage. O projeto também serve como portfólio, mas a arquitetura de dados não deve ampliar desnecessariamente o escopo.
+O protótipo foi construído para demonstrar a jornada de usuários fictícios em diferentes situações e apoiar a apresentação da proposta de negócio. O repositório permanece como registro acadêmico e de portfólio. Não tratar limitações documentadas como um plano de desenvolvimento ativo; eventuais alterações dependem da solicitação atual do autor.
 
-## 4. Decisões de arquitetura atuais
+## 3. Arquitetura da entrega
 
-- Projeto atualmente foca em experiência de usuário e desenvolvimento web mobile.
-- Dados serão puramente artificiais para exemplificar casos de uso do aplicativo.
-- Unico dado oficial é a estrutura da linha 7 Rubi com suas estações e o que tem nelas.
-- Streamlit via python sera o motor de simulação de um aplicativo, usarei outra plataforma para costomização e fazer a integração com o Streamlit.
+- O protótipo priorizou experiência de usuário e uma interface web responsiva.
+- Usuários, rotinas, condições operacionais e assistência são simulados.
+- O cadastro estático da Linha 7–Rubi é a referência real utilizada para estações e recursos publicados.
+- A implementação utiliza Python e Streamlit, com identidade visual criada pela integrante de Marketing e aplicada na interface.
 
 Manter separação simples entre dados, regras da aplicação e telas. Evitar abstrações ou serviços sem necessidade concreta.
 
-## 5. Dados reais e dados simulados
+## 4. Dados reais e dados simulados
 
 ### Cadastro real
 
@@ -48,7 +52,7 @@ Não inventar estações, integrações ou equipamentos para acomodar uma simula
 
 ### Regras para criação de dados simulados
 
-- Antes de criar ou alterar dados, ler `dados-simulados.md`, o cadastro de estações e os arquivos envolvidos na tarefa. Se a documentação ainda não existir, criá-la com a primeira entrega de dados simulados.
+- Antes de criar ou alterar dados em uma nova tarefa autorizada, ler `docs/dados-simulados.md`, o cadastro de estações e os arquivos envolvidos.
 - O prompt de cada tarefa define quais dados devem ser criados, sua estrutura e seu objetivo. Não ampliar a massa de dados ou o schema sem necessidade para a tarefa.
 - Usar `data/estacoes_linha7.csv` como referência para nomes, identificadores, ordem das estações e demais informações disponíveis.
 - Manter os dados coerentes entre si e com os relacionamentos do schema. Não gerar registros aleatórios e desconectados apenas para preencher tabelas.
@@ -63,7 +67,7 @@ Não inventar estações, integrações ou equipamentos para acomodar uma simula
 
 ### Documentação dos dados simulados
 
-O arquivo `dados-simulados.md` funciona como o registro de metadados e das decisões sobre os dados artificiais.
+O arquivo `docs/dados-simulados.md` funciona como o registro de metadados e das decisões sobre os dados artificiais.
 
 A cada criação ou alteração, documentar:
 
@@ -85,13 +89,13 @@ Se uma nova tarefa conflitar com decisões anteriores, registrar a mudança e av
 
 ### Uso na demonstração
 
-Os dados simulados serão definidos por etapa nos prompts das tarefas. O agente deve considerar o conjunto já existente para manter continuidade entre usuários, rotinas, viagens e eventos.
+Os dados simulados da entrega já estão definidos e documentados. Em uma nova tarefa autorizada, considerar o conjunto existente para manter continuidade entre usuários, rotinas, viagens e eventos.
 
 Identificar os registros sintéticos e apresentar as condições operacionais como simuladas na interface.
 
 Esses dados servem para demonstrar e testar o comportamento do aplicativo no pitch. Não representam medições reais da operadora, previsões validadas ou confirmações reais de assistência.
 
-## 6. STATUS.md como bússola do projeto
+## 5. STATUS.md como registro do estado do projeto
 
 O `STATUS.md` registra onde o projeto está e orienta a continuidade do trabalho. O `AGENTS.md` define as regras; o `STATUS.md` mostra o andamento; o prompt atual define a tarefa autorizada.
 
@@ -99,15 +103,15 @@ O `STATUS.md` registra onde o projeto está e orienta a continuidade do trabalho
 - Se o arquivo não existir, criá-lo com base no que foi realmente encontrado no repositório.
 - Atualizar ao concluir uma etapa ou quando houver mudança relevante, bloqueio ou trabalho incompleto.
 - Diferenciar claramente: planejado, em andamento, implementado e validado. Arquivo existente não comprova funcionalidade.
-- Registrar o objetivo atual, o que já funciona, o que falta, bloqueios, decisões recentes e próximo passo recomendado.
+- Manter o encerramento acadêmico, as entregas realizadas, as verificações e as limitações. Se uma nova tarefa for solicitada, registrar seu escopo sem reabrir automaticamente o ciclo acadêmico.
 - Indicar os arquivos envolvidos e as validações realizadas, incluindo limitações e verificações pendentes.
-- Referenciar `dados-simulados.md` para detalhes dos dados, sem duplicar seu conteúdo.
+- Referenciar `docs/dados-simulados.md` para detalhes dos dados, sem duplicar seu conteúdo.
 - Manter o documento curto e atualizado, sem transformá-lo em um histórico extenso de conversas.
 - Próximos passos registrados não autorizam sua execução automática. Seguir o escopo do prompt atual.
 
 Ao encerrar uma tarefa incompleta, deixar explícito onde o trabalho parou, o que foi alterado e o que é necessário para retomá-lo.
 
-## 6. Funcionalidades planejadas
+## 6. Funcionalidades da entrega
 
 - Conta de demonstração com usuário fictício.
 - Perfil com preferências e necessidades de acessibilidade, sem exigir diagnóstico.
@@ -119,10 +123,10 @@ Ao encerrar uma tarefa incompleta, deixar explícito onde o trabalho parou, o qu
 - Responsável e ponto de encontro fictícios quando houver confirmação simulada.
 - Controles da demonstração: selecionar cenário, avançar eventos, reiniciar e limpar estado anterior.
 
-Priorizar, na implementação futura, transições de assistência, alertas relevantes, dados desconhecidos, prevenção de duplicidades e reinício dos cenários.
+Preservar a distinção entre pedido e confirmação, a prevenção de duplicidades, os alertas relevantes e o reinício dos cenários em eventuais alterações solicitadas.
 
 
-## 8. Documentação
+## 7. Documentação
 
 - Documentação em português brasileiro.
 - Atualizar README e documentos técnicos a cada ação.
@@ -132,7 +136,7 @@ Priorizar, na implementação futura, transições de assistência, alertas rele
 - As documentações deverão serguir um padrão de atividade academica com topicos e sub-topicos, com a presença de sumário se a documentação tiver como longa.
 - Linguagem deve ser formal, mas não complexa e engessada, deverá ser uma escrita natural e envolvente, usando conectivos.
 
-## 9. Regras finais
+## 8. Regras finais
 
 - A solicitação atual do autor define escopo e autonomia.
 - Trabalhar em mudanças pequenas e revisáveis.
@@ -140,7 +144,6 @@ Priorizar, na implementação futura, transições de assistência, alertas rele
 - Separar cadastro real, eventos simulados e estado da sessão.
 - Não prometer assistência nem acessibilidade sem confirmação.
 - Distinguir informações reais de simuladas claramente.
-- Preservar trabalho existente da dupla.
+- Preservar o trabalho e os créditos dos três integrantes do grupo.
 - Não declarar conclusões que extrapolem o estado real do repositório.
-
 

@@ -1,5 +1,9 @@
 # Roteiro de demonstração
 
+Este roteiro foi elaborado para o Embarque Inclusivo no contexto do Hacktown, projeto acadêmico voltado ao empreendedorismo, desenvolvido por três estudantes da Universidade Presbiteriana Mackenzie. O ciclo foi concluído, e o documento foi preservado como registro da apresentação planejada e como guia para explorar o protótipo.
+
+O projeto foi classificado para a segunda fase com nota 7,4. Por dificuldades logísticas, o grupo não participou da apresentação presencial dessa etapa; este roteiro não constitui registro de uma apresentação realizada nela. A equipe e suas contribuições estão descritas no [README](../README.md#12-equipe-e-contribuições).
+
 ## 1. Abertura
 
 “Para quem precisa de apoio, saber que uma estação existe não basta. É preciso entender o percurso, os recursos disponíveis no cadastro e como pedir assistência. O Embarque Inclusivo reúne essas decisões em uma experiência pensada para o passageiro.”

@@ -1,5 +1,9 @@
 # Dados simulados da massa inicial
 
+Documento técnico da entrega final do Embarque Inclusivo, projeto acadêmico de empreendedorismo desenvolvido no contexto do Hacktown por três estudantes da Universidade Presbiteriana Mackenzie. O ciclo acadêmico foi concluído; esta documentação preserva as decisões e os dados utilizados no protótipo.
+
+O contexto, a equipe e o resultado da participação estão registrados no [README](../README.md#1-contexto-equipe-e-proposta), e o encerramento está descrito no [STATUS.md](../STATUS.md).
+
 ## Sumário
 
 1. Objetivo
@@ -11,7 +15,7 @@
 7. Diagrama Mermaid
 8. Como gerar os arquivos
 9. Como são consumidos pelo app
-10. Validações executadas e pendências
+10. Validações executadas e limitações da entrega
 11. Cenários e dados da sessão
 
 ## 1. Objetivo
@@ -178,7 +182,7 @@ O script gera os CSVs em [data/simulados](../data/simulados) e valida as regras 
 
 Os booleanos são convertidos de maneira explícita. A string `False` deve resultar em falso; usar `bool("False")` produziria um resultado incorreto.
 
-## 10. Validações executadas e pendências
+## 10. Validações executadas e limitações da entrega
 
 Validações executadas:
 

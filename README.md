@@ -1,6 +1,8 @@
 # Embarque Inclusivo
 
-Protótipo de aplicativo de mobilidade inclusiva para a Linha 7–Rubi. O projeto reúne informações sobre estações, rotinas do passageiro e pedidos de apoio, com atenção às pessoas com deficiência ou mobilidade reduzida.
+Projeto acadêmico concluído, desenvolvido no contexto do **Hacktown**, voltado ao empreendedorismo, por três estudantes da **Universidade Presbiteriana Mackenzie**.
+
+O grupo criou um protótipo de aplicativo de mobilidade inclusiva para a Linha 7–Rubi, reunindo informações sobre estações, rotinas do passageiro e pedidos de apoio, com atenção às pessoas com deficiência ou mobilidade reduzida.
 
 [Abrir a demonstração](https://hackathon-embarque-inclusivo-v8jpnvffi5zdyn4btewhay.streamlit.app/)
 
@@ -8,7 +10,7 @@ Protótipo de aplicativo de mobilidade inclusiva para a Linha 7–Rubi. O projet
 
 ## Sumário
 
-1. [Problema e proposta](#1-problema-e-proposta)
+1. [Contexto, equipe e proposta](#1-contexto-equipe-e-proposta)
 2. [Funcionalidades implementadas](#2-funcionalidades-implementadas)
 3. [Como executar](#3-como-executar)
 4. [Cenários de apresentação](#4-cenários-de-apresentação)
@@ -16,11 +18,29 @@ Protótipo de aplicativo de mobilidade inclusiva para a Linha 7–Rubi. O projet
 6. [Limites da demonstração](#6-limites-da-demonstração)
 7. [Verificação e apresentação](#7-verificação-e-apresentação)
 
-## 1. Problema e proposta
+## 1. Contexto, equipe e proposta
+
+### 1.1. Contexto acadêmico e resultado
+
+O Embarque Inclusivo foi elaborado como exercício de empreendedorismo no Hacktown, relacionando a identificação de um problema social, a construção de uma proposta de negócio e o desenvolvimento de um protótipo demonstrável.
+
+O projeto foi classificado para a segunda fase com **nota 7,4**. Entretanto, dificuldades logísticas impediram a participação do grupo na apresentação dessa etapa, que seria presencial. O ciclo acadêmico foi encerrado, e este repositório preserva o trabalho desenvolvido e seus resultados como registro acadêmico e de portfólio.
+
+### 1.2. Equipe e contribuições
+
+A equipe foi formada por três estudantes da Universidade Presbiteriana Mackenzie, com contribuições complementares na concepção, execução e apresentação visual da proposta.
+
+| Integrante | Curso | Contribuição |
+|---|---|---|
+| Marcos Vinicius Vieira dos Santos | Análise e Desenvolvimento de Sistemas | Coidealização da proposta e responsabilidade integral pela implementação técnica e pela documentação, incluindo o desenvolvimento do protótipo e a estruturação dos dados de demonstração. |
+| Karla Priscila Oliveira Silva | Matemática | Participação na idealização e na construção da proposta do projeto. |
+| Gabriela Cristina Vieira | Marketing | Criação da identidade visual do Embarque Inclusivo. |
+
+### 1.3. Problema e proposta de negócio
 
 Informações dispersas sobre acessibilidade e assistência dificultam o planejamento da viagem e aumentam a dependência de terceiros. O Embarque Inclusivo relaciona o percurso às necessidades de cada pessoa e torna as etapas de um pedido de apoio mais claras.
 
-A proposta de negócio é B2B, voltada a operadoras de trens e metrôs. A Linha 7–Rubi é o recorte da demonstração; não há parceria ou integração confirmada com a TIC Trens. O MVP serve para validar a experiência no hackathon e no projeto de extensão, além de compor o portfólio da equipe.
+A proposta de negócio B2B, voltada a operadoras de trens e metrôs, foi desenvolvida no âmbito desse exercício acadêmico. A Linha 7–Rubi foi o recorte escolhido para a demonstração; não há parceria ou integração confirmada com a TIC Trens. O MVP foi construído para demonstrar a ideia em diferentes situações de viagem e apoiar sua apresentação.
 
 ## 2. Funcionalidades implementadas
 
@@ -86,7 +106,9 @@ Detalhes de origem, campos, relações e geração estão em [docs/dados-simulad
 - Um recurso publicado não confirma funcionamento atual. Ausência de informação é exibida como **não informado**.
 - Integrações do cadastro não são verificadas em tempo real nem usadas para recomendar caminhos fora da Linha 7.
 - Não há previsão de chegada, garantia de percurso acessível, comunicação por voz/SMS ou acompanhamento real da viagem.
-- A acessibilidade ainda precisa ser validada com pessoas com deficiência, leitores de tela e diferentes celulares.
+- A validação de acessibilidade com pessoas com deficiência, leitores de tela e diferentes celulares não está registrada como concluída nesta entrega.
+
+Esses limites fazem parte do escopo do protótipo acadêmico encerrado. Uma eventual evolução dependeria de uma nova iniciativa.
 
 ## 7. Verificação e apresentação
 
@@ -96,8 +118,8 @@ python -m unittest discover -s tests -v
 
 Os testes verificam percursos, cenários, chaves de horários, assistência e navegação com o AppTest do Streamlit. Para reproduzir a base sintética, execute `python data/simulados/generate_dados_sinteticos.py`; esse comando regrava os CSVs sintéticos.
 
-- [Roteiro da demonstração](apresetacao/roteiro_demo.md)
-- [Situação atual e verificações](STATUS.md)
+- [Roteiro de demonstração preservado](apresetacao/roteiro_demo.md)
+- [Encerramento, entregas e verificações](STATUS.md)
 - [Regras do projeto](AGENTS.md)
 
 Referências de experiência consultadas: [TfL Go](https://tfl.gov.uk/maps_/tfl-go), pela consulta da jornada, e [Passenger Assistance](https://passengerassistance.com/), pelas preferências e acompanhamento da assistência. São inspirações de organização da experiência, sem reprodução de marca ou integração com esses serviços.
